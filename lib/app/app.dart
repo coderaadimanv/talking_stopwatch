@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../features/run/ui/run_screen.dart';
 import 'palette.dart';
+import 'router.dart';
 import 'sizes.dart';
 
 /// The app's theme. Dark by default: this screen gets looked at in a gym, at
@@ -66,9 +66,11 @@ class TalkingStopwatchApp extends StatelessWidget {
   const TalkingStopwatchApp({super.key});
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
+  Widget build(BuildContext context) => MaterialApp.router(
     title: 'Talking Stopwatch',
     theme: appTheme(),
-    home: const RunScreen(),
+    routerConfig: _router,
   );
 }
+
+final _router = appRouter();

@@ -1,8 +1,12 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/audio/cue_player.dart';
 import '../core/audio/platform_cue_player.dart';
 import '../core/clock/clock.dart';
+import '../core/ids.dart';
 import '../core/store/store.dart';
 import '../core/timeline/workout.dart';
 
@@ -40,18 +44,64 @@ class AppDataController extends Notifier<AppData> {
 
   void edit(AppData Function(AppData) change) {
     state = change(state);
-    // Fire and forget: the write is atomic, and a failed save must not stop a
-    // workout starting.
-    ref.read(storeProvider).save(state);
+    unawaited(_save(state));
   }
 
-  /// Changes the workout being edited. Phase 2 has exactly one; the preset
-  /// list and its editor arrive in phase 3.
-  void editWorkout(Workout Function(Workout) change) => edit(
+  /// Fire and forget, and genuinely so: the write is atomic, and a full disk
+  /// or a revoked permission must not take down the app in the middle of a
+  /// workout. The next change writes the whole file again anyway.
+  Future<void> _save(AppData data) async {
+    try {
+      await ref.read(storeProvider).save(data);
+    } on FileSystemException {
+      // Nothing useful to do about it here.
+    }
+  }
+
+  /// Changes one saved workout, leaving the rest alone.
+  void editWorkout(String id, Workout Function(Workout) change) => edit(
     (data) => data.copyWith(
-      presets: [change(data.presets.first), ...data.presets.skip(1)],
+      presets: [
+        for (final w in data.presets)
+          if (w.id == id) change(w) else w,
+      ],
     ),
   );
+
+  /// Adds a workout and returns it, so the caller can open its editor.
+  Workout addWorkout({String name = 'New workout'}) {
+    final workout = Workout.simple(
+      id: newId(),
+      name: name,
+      workSeconds: 30,
+      restSeconds: 10,
+      rounds: 8,
+    );
+    edit((data) => data.copyWith(presets: [...data.presets, workout]));
+    return workout;
+  }
+
+  /// Copies a workout, so a variation does not have to be typed out again.
+  Workout duplicate(String id) {
+    final source = state.presets.firstWhere((w) => w.id == id);
+    final copy = source.copyWith(id: newId(), name: '${source.name} copy');
+    edit((data) => data.copyWith(presets: [...data.presets, copy]));
+    return copy;
+  }
+
+  /// Removes a workout. The last one is kept: an empty list would leave the
+  /// app with nothing to show and nothing to start.
+  void deleteWorkout(String id) {
+    if (state.presets.length <= 1) return;
+    edit(
+      (data) => data.copyWith(
+        presets: [
+          for (final w in data.presets)
+            if (w.id != id) w,
+        ],
+      ),
+    );
+  }
 
   void editSettings(AppSettings Function(AppSettings) change) =>
       edit((data) => data.copyWith(settings: change(data.settings)));
@@ -61,7 +111,22 @@ final appDataProvider = NotifierProvider<AppDataController, AppData>(
   AppDataController.new,
 );
 
-/// The workout the run screen will start.
-final workoutProvider = Provider<Workout>(
-  (ref) => ref.watch(appDataProvider).presets.first,
+/// Which saved workout the run screen is pointed at. Not saved: opening the
+/// app puts you back at the list, which is where the choice belongs.
+class SelectedWorkout extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void select(String id) => state = id;
+}
+
+final selectedWorkoutIdProvider = NotifierProvider<SelectedWorkout, String?>(
+  SelectedWorkout.new,
 );
+
+/// The workout the run screen will start.
+final workoutProvider = Provider<Workout>((ref) {
+  final presets = ref.watch(appDataProvider).presets;
+  final id = ref.watch(selectedWorkoutIdProvider);
+  return presets.firstWhere((w) => w.id == id, orElse: () => presets.first);
+});

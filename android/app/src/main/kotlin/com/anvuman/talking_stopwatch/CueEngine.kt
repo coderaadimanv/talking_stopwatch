@@ -114,6 +114,7 @@ object CueEngine {
         leadMs: Long,
         title: String,
         text: String,
+        countUp: Boolean = false,
     ): Long {
         clearTimers()
         val handler = ensureHandler()
@@ -124,7 +125,9 @@ object CueEngine {
 
         val lastCueAt = cues.maxOfOrNull { it.first } ?: 0
         val endsAt = startedAt + lastCueAt
-        TimerService.start(appContext, title, text, endsAt)
+        // A stopwatch has no end to count down to, and the end of its armed
+        // window is not one: it would show a countdown to nothing.
+        TimerService.start(appContext, title, text, if (countUp) 0L else endsAt)
 
         for ((atMs, key) in cues) {
             val playAt = startedAt + atMs

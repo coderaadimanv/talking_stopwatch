@@ -177,12 +177,35 @@ Two Android details that the app depends on and that are easy to undo:
 the future while `Session` pins it to the moment of the call, so anything else
 is the display and the voice disagreeing by exactly that much.
 
+## The stopwatch is the exception to "nothing ticks"
+
+A workout has an end, so its whole script goes down in one call and the app can
+be frozen for twenty minutes without missing a cue. A count-up stopwatch has no
+end, so its script cannot. It arms **ten minutes at a time** and tops the window
+up once five minutes are left (`core/cues/plan_stopwatch.dart`).
+
+The consequence is honest and worth keeping in mind: if the app is frozen past
+the end of an armed window, the stopwatch stops talking until it is opened
+again. **The count itself is never wrong** — only the voice goes quiet.
+
+The window also exists because every distinct phrase has to be rendered once,
+and rendering is the only slow part of starting: a full hour at 15-second
+intervals would be 240 clips to synthesise before the first tick.
+
+**A lap is shown, never spoken.** A lap time is not known until it happens, and
+this app never speaks anything it has not already rendered.
+
 ## Quality gates (run before saying a task is done)
 
 - `flutter analyze` — zero warnings
 - `flutter test` — all green
 - New logic in `core/timeline`, `core/cues`, or `core/audio` needs unit tests
   **written before the implementation**
+- Any new screen goes into `test/features/layout_test.dart`, which pumps every
+  screen at 320dp and 360dp and fails on the overflow stripes. Three real
+  layout bugs reached a screenshot before that test existed. When you add a
+  case to it, prove it can fail: put a `SizedBox(width: 500)` in the row and
+  watch the test go red before you take it out again.
 - Phase 2 onward: the only test that really counts is a real phone, screen
   locked, in a pocket, for a whole session — with music playing and with
   Bluetooth earbuds. Record it on a second phone and check the gaps between

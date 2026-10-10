@@ -69,7 +69,7 @@ class RunController extends Notifier<RunState> {
 
   Future<void> start() async {
     final data = ref.read(appDataProvider);
-    _session.load(data.presets.first, offsetMs: data.settings.offsetMs);
+    _session.load(_workout, offsetMs: data.settings.offsetMs);
 
     final player = ref.read(cuePlayerProvider);
     await player.askToNotify();
