@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/palette.dart';
+import '../../../app/style.dart';
 import '../../../app/providers.dart';
-import '../../../app/sizes.dart';
 import '../../../core/cues/cue.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -146,7 +145,7 @@ class _Heading extends StatelessWidget {
     child: Text(
       text.toUpperCase(),
       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-        color: context.colors.idle,
+        color: context.colors.muted,
         letterSpacing: 1.5,
       ),
     ),

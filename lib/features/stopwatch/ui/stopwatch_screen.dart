@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/palette.dart';
+import '../../../app/style.dart';
 import '../../../app/providers.dart';
-import '../../../app/sizes.dart';
 import '../../../core/format.dart';
 import '../domain/stopwatch_controller.dart';
 
@@ -48,7 +47,7 @@ class StopwatchScreen extends ConsumerWidget {
                 every > 0
                     ? 'Calls out the time every ${every}s'
                     : 'Silent — turn announcements on in settings',
-                style: text.bodyMedium?.copyWith(color: context.colors.idle),
+                style: text.bodyMedium?.copyWith(color: context.colors.muted),
               ),
               const SizedBox(height: Sizes.bigGap),
               Expanded(child: _Laps(laps: watch.laps)),
@@ -56,15 +55,17 @@ class StopwatchScreen extends ConsumerWidget {
               // fixed amount: three fixed buttons overflow a narrow phone.
               Row(
                 children: [
+                  // Equal thirds. The primary action is already obvious from
+                  // being filled and taller, and giving it extra width only
+                  // takes room the side labels need to stay on one line.
                   Expanded(
                     child: OutlinedButton(
                       onPressed: watch.started ? controller.reset : null,
-                      child: const Text('Reset'),
+                      child: const ActionLabel('Reset'),
                     ),
                   ),
                   const SizedBox(width: Sizes.gap),
                   Expanded(
-                    flex: 2,
                     child: SizedBox(
                       height: Sizes.bigControl,
                       child: FilledButton(
@@ -73,7 +74,7 @@ class StopwatchScreen extends ConsumerWidget {
                             : watch.running
                             ? controller.pause
                             : controller.start,
-                        child: Text(
+                        child: ActionLabel(
                           watch.preparing
                               ? '…'
                               : watch.running
@@ -89,7 +90,7 @@ class StopwatchScreen extends ConsumerWidget {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: watch.running ? controller.lap : null,
-                      child: const Text('Lap'),
+                      child: const ActionLabel('Lap'),
                     ),
                   ),
                 ],
@@ -124,7 +125,7 @@ class _Laps extends StatelessWidget {
           title: Text(elapsed(since)),
           trailing: Text(
             elapsed(laps[index]),
-            style: TextStyle(color: context.colors.idle),
+            style: TextStyle(color: context.colors.muted),
           ),
         );
       },

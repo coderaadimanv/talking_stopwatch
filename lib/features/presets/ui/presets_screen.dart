@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/palette.dart';
+import '../../../app/style.dart';
 import '../../../app/providers.dart';
-import '../../../app/sizes.dart';
 import '../../../core/timeline/summary.dart';
 import '../../../core/timeline/workout.dart';
 

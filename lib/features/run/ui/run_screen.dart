@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/palette.dart';
+import '../../../app/style.dart';
 import '../../../app/providers.dart';
-import '../../../app/sizes.dart';
 import '../../../core/format.dart';
 import '../../../core/session/session.dart';
 import '../../../core/timeline/summary.dart';
@@ -126,7 +125,7 @@ class _Ready extends ConsumerWidget {
             onPressed: run.preparing
                 ? null
                 : () => ref.read(runProvider.notifier).start(),
-            child: Text(run.preparing ? 'Getting ready…' : 'Start'),
+            child: ActionLabel(run.preparing ? 'Getting ready…' : 'Start'),
           ),
         ),
         const SizedBox(height: Sizes.gap),
@@ -151,10 +150,9 @@ class _Running extends ConsumerWidget {
     final paused = session.status == SessionStatus.paused;
     final rounds = ref.watch(workoutProvider).workPhases;
     final text = Theme.of(context).textTheme;
-    final on = context.colors.onPhase;
-    final accent = segment == null
-        ? context.colors.idle
-        : context.colors.phase(segment.kind);
+    final kind = segment?.kind ?? SegmentKind.work;
+    final accent = context.colors.phase(kind);
+    final on = context.colors.onPhase(kind);
 
     return Column(
       children: [
@@ -192,6 +190,7 @@ class _Running extends ConsumerWidget {
                 icon: Icons.stop,
                 label: 'Stop',
                 accent: accent,
+                on: on,
                 onPressed: controller.stop,
               ),
             ),
@@ -200,6 +199,7 @@ class _Running extends ConsumerWidget {
                 icon: paused ? Icons.play_arrow : Icons.pause,
                 label: paused ? 'Resume' : 'Pause',
                 accent: accent,
+                on: on,
                 big: true,
                 onPressed: paused ? controller.resume : controller.pause,
               ),
@@ -209,6 +209,7 @@ class _Running extends ConsumerWidget {
                 icon: Icons.skip_next,
                 label: 'Skip',
                 accent: accent,
+                on: on,
                 onPressed: controller.skip,
               ),
             ),
@@ -227,6 +228,7 @@ class _Control extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.accent,
+    required this.on,
     required this.onPressed,
     this.big = false,
   });
@@ -237,13 +239,15 @@ class _Control extends StatelessWidget {
   /// The colour behind this control, which its icon is punched out of.
   final Color accent;
 
+  /// What reads on top of [accent].
+  final Color on;
+
   final VoidCallback onPressed;
   final bool big;
 
   @override
   Widget build(BuildContext context) {
     final side = big ? Sizes.bigControl : Sizes.control;
-    final on = context.colors.onPhase;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -296,7 +300,7 @@ class _Finished extends ConsumerWidget {
         width: double.infinity,
         child: FilledButton(
           onPressed: ref.read(runProvider.notifier).stop,
-          child: const Text('Again'),
+          child: const ActionLabel('Again'),
         ),
       ),
       const SizedBox(height: Sizes.gap),

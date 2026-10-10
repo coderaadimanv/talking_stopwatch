@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:talking_stopwatch/app/app.dart';
+import 'package:talking_stopwatch/app/style.dart';
 import 'package:talking_stopwatch/app/providers.dart';
 import 'package:talking_stopwatch/core/audio/cue_player.dart';
 import 'package:talking_stopwatch/core/clock/clock.dart';
@@ -76,6 +76,27 @@ void main() {
     await tester.pump();
   }
 
+  /// A wrapped label is not an overflow — nothing throws, the button simply
+  /// grows taller and reads as "Re / set". So it has to be measured, and it is
+  /// measured against a label on the same screen that is too short to wrap.
+  /// No threshold to guess at, and nothing to re-tune when the type changes.
+  void expectOneLine(
+    WidgetTester tester,
+    String label, {
+    required String shortEnoughToNeverWrap,
+  }) {
+    // At most as tall as the short one: wrapping makes a label taller, and
+    // being scaled down to fit makes it shorter, so this catches the one
+    // without complaining about the other.
+    expect(
+      tester.getSize(find.text(label)).height,
+      lessThanOrEqualTo(
+        tester.getSize(find.text(shortEnoughToNeverWrap)).height,
+      ),
+      reason: '"$label" wrapped, where "$shortEnoughToNeverWrap" did not',
+    );
+  }
+
   const sizes = {'small': Size(320, 640), 'ordinary': Size(360, 800)};
 
   for (final entry in sizes.entries) {
@@ -90,6 +111,7 @@ void main() {
       testWidgets('a workout waiting to start fits', (tester) async {
         await pumpAt(tester, const RunScreen(), size: size);
         expect(tester.takeException(), isNull);
+        expectOneLine(tester, 'Start', shortEnoughToNeverWrap: 'Edit');
       });
 
       testWidgets('a workout in progress fits', (tester) async {
@@ -99,6 +121,9 @@ void main() {
 
         expect(find.text('Get ready'), findsOneWidget);
         expect(tester.takeException(), isNull);
+        for (final label in ['Stop', 'Pause']) {
+          expectOneLine(tester, label, shortEnoughToNeverWrap: 'Skip');
+        }
 
         // The ticker has to be stopped inside the test: the pending-timer
         // check runs before any tearDown gets a chance to dispose it.
@@ -116,6 +141,10 @@ void main() {
         await tester.pump();
 
         expect(tester.takeException(), isNull);
+        for (final label in ['Reset', 'Pause']) {
+          expectOneLine(tester, label, shortEnoughToNeverWrap: 'Lap');
+        }
+
         await stopwatch.reset();
       });
 
