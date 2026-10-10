@@ -35,6 +35,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.cooldown,
     required this.idle,
     required this.danger,
+    required this.onPhase,
   });
 
   static const dark = AppColors(
@@ -45,6 +46,7 @@ class AppColors extends ThemeExtension<AppColors> {
     cooldown: Palette.cooldown,
     idle: Palette.idle,
     danger: Palette.danger,
+    onPhase: Palette.ink,
   );
 
   final Color work;
@@ -54,6 +56,11 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color cooldown;
   final Color idle;
   final Color danger;
+
+  /// Text and controls drawn on top of a phase colour. Near-black rather than
+  /// white: against the five phase colours it is the difference between a
+  /// number you can read from across a room and one you have to squint at.
+  final Color onPhase;
 
   /// The colour the whole run screen takes while [kind] is running.
   Color phase(SegmentKind kind) => switch (kind) {
@@ -73,6 +80,7 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? cooldown,
     Color? idle,
     Color? danger,
+    Color? onPhase,
   }) => AppColors(
     work: work ?? this.work,
     rest: rest ?? this.rest,
@@ -81,6 +89,7 @@ class AppColors extends ThemeExtension<AppColors> {
     cooldown: cooldown ?? this.cooldown,
     idle: idle ?? this.idle,
     danger: danger ?? this.danger,
+    onPhase: onPhase ?? this.onPhase,
   );
 
   @override
@@ -94,6 +103,7 @@ class AppColors extends ThemeExtension<AppColors> {
       cooldown: Color.lerp(cooldown, other.cooldown, t)!,
       idle: Color.lerp(idle, other.idle, t)!,
       danger: Color.lerp(danger, other.danger, t)!,
+      onPhase: Color.lerp(onPhase, other.onPhase, t)!,
     );
   }
 }

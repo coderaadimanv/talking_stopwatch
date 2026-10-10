@@ -65,6 +65,10 @@ Why it matters:
 ## Stack (do not change without asking)
 
 - Flutter (stable), Dart, Android + iOS
+- **Android minSdk 29** (Android 10). The audio path needs `AudioFocusRequest`
+  (26) and `startForeground` with a service type (29); holding the line at 29
+  keeps compatibility branches out of the one code path that has to be exactly
+  on time.
 - State: Riverpod. Routing: go_router
 - Storage: **one JSON file**, written atomically. No database, no codegen.
 - Voice: the phone's own TTS, **pre-rendered to cached audio files** and played
@@ -134,6 +138,44 @@ Rules, all in `core/cues/` and all unit-tested:
   matters, whichever came first in time.
 - The rest after the very last work phase is dropped.
 - A round announces its **label** if it has one, otherwise "round N".
+
+## The native contract
+
+Four methods and two events, the same on both platforms. Nothing in this list
+mentions a workout, and nothing in it makes a decision.
+
+```
+available()                        is there a voice on this phone at all
+warm(phrases)                      render anything uncached, load it, then call back
+schedule(at[], keys[], leadMs, …)  arm the lot; returns the uptime cue zero was pinned to
+cancel()                           drop everything armed, end the session
+elapsed()                          how long the native session has run, or null
+describe(title, text)              what the notification says
+→ fired(key)                       a cue played
+→ stopped()                        the user pressed Stop on the notification
+```
+
+`warm` is the slow one and is awaited: on a first run it renders every phrase
+through `TextToSpeech.synthesizeToFile` and loads each clip into `SoundPool`, so
+that by the time the first cue is due there is nothing left to decode, allocate
+or ask the speech engine for. **Nothing is ever spoken live** — the engine takes
+100–400 unpredictable milliseconds to start, enough to land "three" after the
+phase it was counting down has already changed.
+
+Two Android details that the app depends on and that are easy to undo:
+
+- The schedule is armed with `Handler.postAtTime`, which runs on
+  `SystemClock.uptimeMillis` — a clock that **stops advancing in deep sleep**.
+  `TimerService` holds a partial wake lock for the length of the session for
+  exactly this reason. Remove it and the countdown silently stretches.
+- Audio focus is requested **per cue** and released on a trailing delay, so a
+  run of "three, two, one, go" ducks the user's music once and then gives it
+  back. Holding focus for the session would leave their music quiet for twenty
+  minutes.
+
+`leadMs` is zero from Dart on purpose: the platform pins cue zero that far in
+the future while `Session` pins it to the moment of the call, so anything else
+is the display and the voice disagreeing by exactly that much.
 
 ## Quality gates (run before saying a task is done)
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../features/run/ui/run_screen.dart';
 import 'palette.dart';
 import 'sizes.dart';
 
@@ -19,6 +20,21 @@ ThemeData appTheme() {
   );
 
   return base.copyWith(
+    // The two sizes that carry the screen. They live here rather than in the
+    // run screen because a size named in a widget is a size nobody can compare
+    // against the others.
+    textTheme: base.textTheme.copyWith(
+      displayLarge: base.textTheme.displayLarge?.copyWith(
+        fontSize: Sizes.countdownText,
+        fontWeight: FontWeight.w200,
+        height: 1,
+        letterSpacing: -4,
+      ),
+      headlineLarge: base.textTheme.headlineLarge?.copyWith(
+        fontSize: Sizes.phaseText,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
     // Sizes belong to the theme, so no screen has to name them.
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
@@ -53,39 +69,6 @@ class TalkingStopwatchApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     title: 'Talking Stopwatch',
     theme: appTheme(),
-    home: const _Scaffolding(),
-  );
-}
-
-/// Phase 1 ships the core and its tests; the run screen arrives with the
-/// Android audio layer in Phase 2. Until then there is something to launch.
-class _Scaffolding extends StatelessWidget {
-  const _Scaffolding();
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    body: Center(
-      child: Padding(
-        padding: const EdgeInsets.all(Sizes.gutter),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Talking Stopwatch',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: Sizes.gap),
-            Text(
-              'The cue engine is in place and tested.\n'
-              'The run screen comes with the audio layer.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: context.colors.idle,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
+    home: const RunScreen(),
   );
 }
