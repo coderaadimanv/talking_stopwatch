@@ -167,6 +167,11 @@ void main() {
         await pumpAt(tester, const SettingsScreen(), size: size);
         expect(tester.takeException(), isNull);
 
+        // The chosen segment carries more than the others and is the one
+        // that wraps. 'Off' is never chosen in this fixture, so it is the
+        // honest single-line reference.
+        expectOneLine(tester, '1m', shortEnoughToNeverWrap: 'Off');
+
         await tester.drag(find.byType(ListView), const Offset(0, -400));
         await tester.pump();
         expect(tester.takeException(), isNull);

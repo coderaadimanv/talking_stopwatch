@@ -213,6 +213,15 @@ only be shouting — and settings is where the longest explanatory text in the
 app lives. What carries over instead is the vocabulary: the soft ground, round
 badges, cards with room to breathe, and terracotta for whatever matters.
 
+`SoftBackground` has two moods for this. On a phase colour its shapes are that
+colour lifted and dropped a little and stay nearly invisible; on a dark screen
+there is nothing to lift, so it takes a `glow` and lays down pools of it
+instead. That is where the warmth on the list and the settings comes from.
+
+A badge on a dark screen is filled with `Brand.accentWash` — the accent turned
+right down — not with ivory. A pale disc on a dark page is a hole punched in
+it.
+
 ## The stopwatch is the exception to "nothing ticks"
 
 A workout has an end, so its whole script goes down in one call and the app can

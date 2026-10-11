@@ -11,6 +11,9 @@ import '../../../core/cues/cue.dart';
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
+  /// How far the calibration slider goes either way.
+  static const _offsetRangeMs = 500;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(appDataProvider).settings;
@@ -19,21 +22,23 @@ class SettingsScreen extends ConsumerWidget {
     final colors = context.colors;
     final text = Theme.of(context).textTheme;
 
-    final face = colors.faceOn(colors.stopwatch);
-    final deep = colors.deepOf(colors.stopwatch);
-
     return Scaffold(
       backgroundColor: Brand.ink,
       appBar: AppBar(
-        backgroundColor: Brand.transparent,
-        leading: IconButton(
-          onPressed: () => context.go('/'),
-          icon: const Icon(Icons.arrow_back),
+        leadingWidth: Sizes.bigControl,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: Sizes.gap),
+          child: IconButton(
+            onPressed: () => context.go('/'),
+            style: chipIconButton(),
+            icon: const Icon(Icons.arrow_back),
+          ),
         ),
         title: const Text('Settings'),
       ),
       body: SoftBackground(
         color: Brand.ink,
+        glow: colors.work,
         child: SafeArea(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
@@ -61,13 +66,11 @@ class SettingsScreen extends ConsumerWidget {
               _Section(
                 icon: Icons.timer_outlined,
                 title: 'Stopwatch',
-                face: face,
-                deep: deep,
+                subtitle: 'Call out the time',
                 children: [
-                  _Row(
-                    title: 'Call out the time',
-                    value: settings.stopwatchAnnounceSeconds == 0
-                        ? 'Never'
+                  _Reading(
+                    label: settings.stopwatchAnnounceSeconds == 0
+                        ? 'The stopwatch stays quiet'
                         : 'Every ${settings.stopwatchAnnounceSeconds} seconds',
                   ),
                   const SizedBox(height: Sizes.gap),
@@ -78,6 +81,10 @@ class SettingsScreen extends ConsumerWidget {
                       ButtonSegment(value: 30, label: Text('30s')),
                       ButtonSegment(value: 60, label: Text('1m')),
                     ],
+                    // No tick. Four segments across a 320dp phone leave about
+                    // 64 logical pixels each, and the tick takes a third of
+                    // that — enough to wrap "1m" onto two lines. The solid
+                    // fill already says which one is chosen.
                     showSelectedIcon: false,
                     selected: {settings.stopwatchAnnounceSeconds},
                     onSelectionChanged: (choice) => data.editSettings(
@@ -91,27 +98,39 @@ class SettingsScreen extends ConsumerWidget {
               _Section(
                 icon: Icons.graphic_eq_rounded,
                 title: 'Timing',
-                face: face,
-                deep: deep,
+                subtitle: 'Audio delay',
                 children: [
-                  _Row(
-                    title: 'Audio delay',
-                    value: settings.offsetMs == 0
-                        ? 'On the beat'
+                  _Reading(
+                    label: settings.offsetMs == 0
+                        ? 'Cues play on the beat'
                         : settings.offsetMs < 0
-                        ? '${-settings.offsetMs}ms early'
-                        : '${settings.offsetMs}ms late',
+                        ? 'Cues play early'
+                        : 'Cues play late',
+                    value: settings.offsetMs == 0
+                        ? '0 ms'
+                        : '${settings.offsetMs.abs()} ms',
                   ),
                   Slider(
                     value: settings.offsetMs.toDouble(),
-                    min: -500,
-                    max: 500,
+                    min: -_offsetRangeMs.toDouble(),
+                    max: _offsetRangeMs.toDouble(),
                     divisions: 20,
-                    label: '${settings.offsetMs}ms',
                     onChanged: (value) => data.editSettings(
                       (s) => s.copyWith(offsetMs: value.round()),
                     ),
                   ),
+                  // The ends mean opposite things and a number alone does not
+                  // say which. Just the direction: the reading above already
+                  // gives the size, and spelling out both bounds in full is
+                  // wider than a 320dp phone has to give.
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Early', style: text.bodySmall),
+                      Text('Late', style: text.bodySmall),
+                    ],
+                  ),
+                  const SizedBox(height: Sizes.gap),
                   Text(
                     'Bluetooth earbuds run 150–300ms behind and will not say '
                     'how far. If the countdown sounds late on yours, drag '
@@ -119,13 +138,10 @@ class SettingsScreen extends ConsumerWidget {
                     style: text.bodyMedium,
                   ),
                   const SizedBox(height: Sizes.gap),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _testVoice(ref),
-                      icon: const Icon(Icons.volume_up),
-                      label: const ActionLabel('Test the voice'),
-                    ),
+                  _ActionRow(
+                    icon: Icons.volume_up_rounded,
+                    label: 'Test the voice',
+                    onTap: () => _testVoice(ref),
                   ),
                 ],
               ),
@@ -133,8 +149,7 @@ class SettingsScreen extends ConsumerWidget {
               _Section(
                 icon: Icons.light_mode_outlined,
                 title: 'Screen',
-                face: face,
-                deep: deep,
+                subtitle: 'Keep the screen on',
                 children: [
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
@@ -167,75 +182,139 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-/// A heading with its own badge, and the card of settings under it.
+/// A heading: what the section is, and what it does, with its own badge.
 class _Section extends StatelessWidget {
   const _Section({
     required this.icon,
     required this.title,
-    required this.face,
-    required this.deep,
+    required this.subtitle,
     required this.children,
   });
 
   final IconData icon;
   final String title;
-  final Color face;
-  final Color deep;
+  final String subtitle;
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Padding(
-        padding: const EdgeInsets.only(
-          top: Sizes.bigGap,
-          bottom: Sizes.gap,
-          left: Sizes.gap / 2,
-        ),
-        child: Row(
-          children: [
-            CircleBadge(
-              size: Sizes.badgeTiny,
-              background: face,
-              child: Icon(icon, color: deep, size: Sizes.iconSmall),
-            ),
-            const SizedBox(width: Sizes.gap),
-            Text(
-              title.toUpperCase(),
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
-          ],
-        ),
-      ),
-      Card(
-        child: Padding(
-          padding: const EdgeInsets.all(Sizes.gutter),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: children,
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(
+            top: Sizes.bigGap,
+            bottom: Sizes.gap,
+            left: Sizes.gap / 2,
+          ),
+          child: Row(
+            children: [
+              CircleBadge(
+                size: Sizes.badgeTiny,
+                // The accent turned right down, not ivory: on a dark screen a
+                // pale disc is a hole punched in the page.
+                background: Brand.accentWash,
+                child: Icon(
+                  icon,
+                  color: context.colors.work,
+                  size: Sizes.iconSmall,
+                ),
+              ),
+              const SizedBox(width: Sizes.gap),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: text.titleLarge),
+                    Text(subtitle, style: text.bodyMedium),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-      ),
-    ],
-  );
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(Sizes.gutter),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
-/// A setting's name, with what it is currently set to beside it.
-class _Row extends StatelessWidget {
-  const _Row({required this.title, required this.value});
+/// What a setting currently says, and the number behind it.
+class _Reading extends StatelessWidget {
+  const _Reading({required this.label, this.value});
 
-  final String title;
-  final String value;
+  final String label;
+  final String? value;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     return Row(
       children: [
-        Expanded(child: Text(title, style: text.titleMedium)),
-        Text(value, style: text.bodyMedium),
+        Expanded(child: Text(label, style: text.bodyLarge)),
+        if (value != null)
+          Text(
+            value!,
+            style: text.titleMedium?.copyWith(color: context.colors.work),
+          ),
       ],
     );
   }
+}
+
+/// A row that does something, rather than setting something.
+class _ActionRow extends StatelessWidget {
+  const _ActionRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Brand.transparent,
+    borderRadius: BorderRadius.circular(Sizes.radius),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: Container(
+        height: Sizes.control,
+        padding: const EdgeInsets.symmetric(horizontal: Sizes.gutter),
+        decoration: BoxDecoration(
+          border: Border.all(color: Brand.cardLine, width: Sizes.hairline),
+          borderRadius: BorderRadius.circular(Sizes.radius),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: Sizes.icon, color: context.colors.work),
+            const SizedBox(width: Sizes.gap),
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: Sizes.icon,
+              color: context.colors.muted,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

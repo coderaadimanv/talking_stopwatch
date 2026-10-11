@@ -37,6 +37,13 @@ abstract final class Brand {
   static const veilDark = Color(0x12000000);
 
   static const transparent = Color(0x00000000);
+
+  /// A card's edge on a dark screen. Warm rather than neutral, so the cards
+  /// belong to the accent that lights the rest of the screen.
+  static final cardLine = terracotta.withValues(alpha: 0.22);
+
+  /// The fill behind a section's icon: the accent, turned right down.
+  static final accentWash = terracotta.withValues(alpha: 0.16);
 }
 
 /// The one place the app is allowed a shadow.
@@ -163,6 +170,10 @@ abstract final class Sizes {
   /// under a thumb. Softened here, and deliberately one number: change this
   /// and the whole app changes with it.
   static const radius = 14.0;
+
+  /// Cards are rounder than the controls inside them, which is what makes
+  /// them read as one surface rather than a box drawn around some widgets.
+  static const radiusCard = 20.0;
 
   static const hairline = 1.0;
 }
@@ -345,6 +356,21 @@ extension ColorsOf on BuildContext {
   AppColors get colors => Theme.of(this).extension<AppColors>()!;
 }
 
+/// An icon button sitting in its own dark disc, for app bars.
+///
+/// A bare arrow on a dark screen is a small grey mark in a large empty corner.
+/// The disc gives it an edge to be seen against and a target to be hit.
+ButtonStyle chipIconButton() => ButtonStyle(
+  backgroundColor: const WidgetStatePropertyAll(Brand.surface),
+  foregroundColor: const WidgetStatePropertyAll(Brand.ivory),
+  overlayColor: const WidgetStatePropertyAll(Color(0x14F4EFE7)),
+  shape: const WidgetStatePropertyAll(CircleBorder()),
+  minimumSize: const WidgetStatePropertyAll(
+    Size(Sizes.control, Sizes.control),
+  ),
+  iconSize: const WidgetStatePropertyAll(Sizes.icon),
+);
+
 /// A button's label, which shrinks rather than wraps.
 ///
 /// Three buttons across a 320dp phone leave about 62 logical pixels for text,
@@ -445,13 +471,13 @@ ThemeData appTheme() {
     textButtonTheme: TextButtonThemeData(style: _text()),
     iconButtonTheme: IconButtonThemeData(style: _icon()),
 
-    cardTheme: const CardThemeData(
+    cardTheme: CardThemeData(
       color: Brand.surface,
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(Sizes.radius)),
-        side: BorderSide(color: Brand.line, width: Sizes.hairline),
+        borderRadius: BorderRadius.circular(Sizes.radiusCard),
+        side: BorderSide(color: Brand.cardLine, width: Sizes.hairline),
       ),
     ),
 
@@ -511,6 +537,9 @@ ThemeData appTheme() {
       inactiveTrackColor: Brand.raised,
       thumbColor: Brand.terracotta,
       overlayColor: Color(0x33D97745),
+      // A little lift under the thumb, so the one thing being dragged is the
+      // one thing standing off the track.
+      thumbShape: RoundSliderThumbShape(enabledThumbRadius: 11, elevation: 4),
     ),
 
     segmentedButtonTheme: SegmentedButtonThemeData(

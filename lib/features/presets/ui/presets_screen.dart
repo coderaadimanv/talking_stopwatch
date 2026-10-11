@@ -40,6 +40,7 @@ class PresetsScreen extends ConsumerWidget {
       ),
       body: SoftBackground(
         color: Brand.ink,
+        glow: colors.work,
         child: SafeArea(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
@@ -67,8 +68,7 @@ class PresetsScreen extends ConsumerWidget {
               const SizedBox(height: Sizes.gap),
               _StopwatchCard(
                 onTap: () => context.go('/stopwatch'),
-                face: colors.faceOn(colors.stopwatch),
-                deep: colors.deepOf(colors.stopwatch),
+                accent: colors.stopwatch,
               ),
             ],
           ),
@@ -105,21 +105,19 @@ class _WorkoutCard extends ConsumerWidget {
     return Card(
       child: InkWell(
         onTap: onRun,
-        borderRadius: BorderRadius.circular(Sizes.radius),
+        borderRadius: BorderRadius.circular(Sizes.radiusCard),
         child: Padding(
-          padding: const EdgeInsets.all(Sizes.gap),
+          padding: const EdgeInsets.all(Sizes.gutter),
           child: Row(
             children: [
               // The dial, shrunk: how long the whole thing takes, which is
               // what anyone checks before committing to it.
               CircleBadge(
                 size: Sizes.badgeSmall,
-                background: colors.faceOn(ground),
+                background: Brand.accentWash,
                 child: Text(
                   workout.totalLabel,
-                  style: text.titleMedium?.copyWith(
-                    color: colors.deepOf(ground),
-                  ),
+                  style: text.titleMedium?.copyWith(color: ground),
                 ),
               ),
               const SizedBox(width: Sizes.gap),
@@ -156,15 +154,10 @@ class _WorkoutCard extends ConsumerWidget {
 }
 
 class _StopwatchCard extends StatelessWidget {
-  const _StopwatchCard({
-    required this.onTap,
-    required this.face,
-    required this.deep,
-  });
+  const _StopwatchCard({required this.onTap, required this.accent});
 
   final VoidCallback onTap;
-  final Color face;
-  final Color deep;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
@@ -172,16 +165,16 @@ class _StopwatchCard extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(Sizes.radius),
+        borderRadius: BorderRadius.circular(Sizes.radiusCard),
         child: Padding(
-          padding: const EdgeInsets.all(Sizes.gap),
+          padding: const EdgeInsets.all(Sizes.gutter),
           child: Row(
             children: [
               CircleBadge.icon(
                 size: Sizes.badgeSmall,
-                background: face,
+                background: Brand.accentWash,
                 icon: Icons.timer_outlined,
-                color: deep,
+                color: accent,
               ),
               const SizedBox(width: Sizes.gap),
               Expanded(
