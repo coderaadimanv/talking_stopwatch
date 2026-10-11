@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.os.SystemClock
@@ -101,19 +102,42 @@ class TimerService : Service() {
         }
     }
 
+    /**
+     * The channel the session notification lives on.
+     *
+     * Importance is DEFAULT rather than LOW, and that is the whole reason this
+     * notification shows on the lock screen. Android treats anything below
+     * DEFAULT as a "silent" notification, and phones routinely hide silent
+     * notifications from the lock screen — which is exactly where someone
+     * mid-workout is looking. The noise DEFAULT would normally bring is turned
+     * off here instead: no sound, no vibration, and the notification itself
+     * only ever alerts once.
+     *
+     * The id is versioned because a channel's importance can only be set when
+     * it is created. Android ignores later changes on purpose — the settings
+     * belong to the user, not the app — so raising it means a new channel and
+     * deleting the old one. Any future change to importance needs the same.
+     */
+    private fun ensureChannel(manager: NotificationManager?) {
+        manager?.deleteNotificationChannel(RETIRED_CHANNEL_ID)
+        if (manager?.getNotificationChannel(CHANNEL_ID) != null) return
+        manager?.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID,
+                "Running session",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            },
+        )
+    }
+
     private fun build(): Notification {
         val manager = getSystemService(NotificationManager::class.java)
-        if (manager?.getNotificationChannel(CHANNEL_ID) == null) {
-            manager?.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    "Running session",
-                    // Low: the app's whole job is making noise on purpose, so
-                    // the notification itself should be silent.
-                    NotificationManager.IMPORTANCE_LOW,
-                ).apply { setShowBadge(false) },
-            )
-        }
+        ensureChannel(manager)
 
         val open = PendingIntent.getActivity(
             this,
@@ -135,6 +159,17 @@ class TimerService : Service() {
             .setContentIntent(open)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            // Nothing here is private: it is a workout timer. Saying so means
+            // the phase and the countdown still show on a lock screen set to
+            // hide sensitive content.
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setCategory(
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    Notification.CATEGORY_STOPWATCH
+                } else {
+                    Notification.CATEGORY_PROGRESS
+                },
+            )
             .addAction(
                 Notification.Action.Builder(null, "Stop", stop).build(),
             )
@@ -155,7 +190,11 @@ class TimerService : Service() {
     }
 
     companion object {
-        private const val CHANNEL_ID = "session"
+        private const val CHANNEL_ID = "session.v2"
+
+        // The first channel, created at IMPORTANCE_LOW. Deleted on sight so
+        // an app updated from that build does not keep the old settings.
+        private const val RETIRED_CHANNEL_ID = "session"
         private const val NOTIFICATION_ID = 1
         private const val ACTION_STOP = "com.anvuman.talking_stopwatch.STOP"
         private const val EXTRA_TITLE = "title"
