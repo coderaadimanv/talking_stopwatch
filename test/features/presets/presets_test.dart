@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:talking_stopwatch/app/providers.dart';
-import 'package:talking_stopwatch/core/store/store.dart';
-import 'package:talking_stopwatch/core/timeline/workout.dart';
+import 'package:cadent/app/providers.dart';
+import 'package:cadent/core/store/store.dart';
+import 'package:cadent/core/timeline/workout.dart';
 
 void main() {
   late Directory dir;

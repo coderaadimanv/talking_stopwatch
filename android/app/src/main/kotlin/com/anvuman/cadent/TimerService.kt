@@ -1,4 +1,4 @@
-package com.anvuman.talking_stopwatch
+package com.anvuman.cadent
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -102,7 +102,7 @@ class TimerService : Service() {
         val power = getSystemService(PowerManager::class.java) ?: return
         wakeLock = power.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
-            "talking_stopwatch:session",
+            "cadent:session",
         ).also {
             // A timeout so that a bug here cannot flatten the battery: no
             // workout runs longer than this, and the service releases it
@@ -230,8 +230,8 @@ class TimerService : Service() {
         // an app updated from that build does not keep the old settings.
         private const val RETIRED_CHANNEL_ID = "session"
         private const val NOTIFICATION_ID = 1
-        private const val ACTION_STOP = "com.anvuman.talking_stopwatch.STOP"
-        private const val ACTION_PAUSE = "com.anvuman.talking_stopwatch.PAUSE"
+        private const val ACTION_STOP = "com.anvuman.cadent.STOP"
+        private const val ACTION_PAUSE = "com.anvuman.cadent.PAUSE"
         private const val EXTRA_TITLE = "title"
         private const val EXTRA_TEXT = "text"
         private const val EXTRA_ENDS_AT = "endsAt"

@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:talking_stopwatch/core/audio/platform_cue_player.dart';
-import 'package:talking_stopwatch/core/cues/cue.dart';
+import 'package:cadent/core/audio/platform_cue_player.dart';
+import 'package:cadent/core/cues/cue.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

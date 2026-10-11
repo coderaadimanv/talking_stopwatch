@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:talking_stopwatch/core/format.dart';
-import 'package:talking_stopwatch/core/timeline/summary.dart';
-import 'package:talking_stopwatch/core/timeline/workout.dart';
+import 'package:cadent/core/format.dart';
+import 'package:cadent/core/timeline/summary.dart';
+import 'package:cadent/core/timeline/workout.dart';
 
 void main() {
   group('countdown', () {

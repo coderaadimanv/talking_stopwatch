@@ -1,4 +1,4 @@
-# Talking Stopwatch — Agent Guide
+# Cadent — Agent Guide
 
 Read this file fully before every session.
 
@@ -85,6 +85,26 @@ Why it matters:
 **Dependencies are `flutter_riverpod`, `go_router`, `path_provider`. That is
 all. Do not add a package without asking** — and never one for audio, TTS,
 hashing, storage or fonts; those are deliberately hand-rolled.
+
+## The name and the mark
+
+**Cadent** — from *cadere*, to fall: falling into rhythm. Chosen because it is
+true of both modes without favouring either, where "Talking Stopwatch" named
+the least-used of the three and over-promised a voice that focus mode
+deliberately withholds. Every other candidate was already on Play, two of them
+as focus timers.
+
+The mark is in `brand/`: a terracotta **C** that is also the dial every running
+screen draws, with a teal dot sitting in its mouth — the beat it lands on. The
+two colours are the two modes. `brand/logo.svg` is rounded for a README or a
+store listing; `brand/icon.svg` is square because every platform applies its
+own mask and a pre-rounded icon comes out rounded twice.
+
+`tool/brand_icons.sh` regenerates the iOS icon set and Android's fallback
+bitmaps from `brand/icon.svg`. Android's real launcher icon is an adaptive
+vector and is not generated — see the comments in
+`res/drawable/ic_launcher_foreground.xml` for why the mark is drawn smaller
+than the safe zone, and why the themed-icon layer is a separate silhouette.
 
 The typeface is **Jost**, Anvil Lab Studio's, bundled as a single variable
 file at `assets/fonts/Jost-Variable.ttf` (135 KB, and smaller than the four

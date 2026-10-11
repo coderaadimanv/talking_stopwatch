@@ -1,5 +1,5 @@
-name: talking_stopwatch
-description: "A stopwatch that talks, so you never look at it mid-workout."
+name: cadent
+description: "A timer that keeps the rhythm out loud, so you never look at it."
 publish_to: 'none'
 
 version: 0.1.0+1

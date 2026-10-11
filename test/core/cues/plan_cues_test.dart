@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:talking_stopwatch/core/cues/cue.dart';
-import 'package:talking_stopwatch/core/cues/phrase.dart';
-import 'package:talking_stopwatch/core/cues/plan_cues.dart';
-import 'package:talking_stopwatch/core/timeline/timeline.dart';
-import 'package:talking_stopwatch/core/timeline/workout.dart';
+import 'package:cadent/core/cues/cue.dart';
+import 'package:cadent/core/cues/phrase.dart';
+import 'package:cadent/core/cues/plan_cues.dart';
+import 'package:cadent/core/timeline/timeline.dart';
+import 'package:cadent/core/timeline/workout.dart';
 
 /// `'10000 Go, round 1'` per cue — so a failure reads like the script.
 List<String> script(List<Cue> cues) =>

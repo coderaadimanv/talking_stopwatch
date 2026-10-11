@@ -1,4 +1,4 @@
-package com.anvuman.talking_stopwatch
+package com.anvuman.cadent
 
 import android.Manifest
 import android.content.ActivityNotFoundException
@@ -197,6 +197,6 @@ class MainActivity : FlutterActivity() {
     }
 
     private companion object {
-        const val CHANNEL = "com.anvuman.talking_stopwatch/cues"
+        const val CHANNEL = "com.anvuman.cadent/cues"
     }
 }

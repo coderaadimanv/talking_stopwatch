@@ -17,7 +17,7 @@ class PlatformCuePlayer implements CuePlayer {
     _channel.setMethodCallHandler(_onCall);
   }
 
-  static const channelName = 'com.anvuman.talking_stopwatch/cues';
+  static const channelName = 'com.anvuman.cadent/cues';
 
   final MethodChannel _channel;
   final _fired = StreamController<String>.broadcast();

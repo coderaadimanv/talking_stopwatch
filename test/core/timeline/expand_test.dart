@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:talking_stopwatch/core/timeline/timeline.dart';
-import 'package:talking_stopwatch/core/timeline/workout.dart';
+import 'package:cadent/core/timeline/timeline.dart';
+import 'package:cadent/core/timeline/workout.dart';
 
 void main() {
   group('expand', () {

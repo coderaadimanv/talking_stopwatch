@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:talking_stopwatch/core/audio/cue_player.dart';
-import 'package:talking_stopwatch/core/clock/clock.dart';
-import 'package:talking_stopwatch/core/session/session.dart';
-import 'package:talking_stopwatch/core/timeline/workout.dart';
+import 'package:cadent/core/audio/cue_player.dart';
+import 'package:cadent/core/clock/clock.dart';
+import 'package:cadent/core/session/session.dart';
+import 'package:cadent/core/timeline/workout.dart';
 
 void main() {
   late FakeClock clock;

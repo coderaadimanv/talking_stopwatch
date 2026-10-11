@@ -35,7 +35,7 @@ Future<void> main() async {
         initialDataProvider.overrideWithValue(data),
         cuePlayerProvider.overrideWithValue(player),
       ],
-      child: TalkingStopwatchApp(
+      child: CadentApp(
         initialLocation: startLocation(data, running: running),
       ),
     ),
