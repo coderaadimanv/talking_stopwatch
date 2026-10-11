@@ -114,18 +114,51 @@ class Session {
     await player.schedule(_cues, leadMs: _leadMs);
   }
 
+  /// Holds the session. The platform keeps the armed list and its own clock,
+  /// so this is a pause rather than a cancel and a rebuild — which also means
+  /// the notification's Pause button can do it with no UI alive.
   Future<void> pause() async {
     if (_status != SessionStatus.running) return;
     _elapsedAtAnchor = elapsedMs;
     _status = SessionStatus.paused;
-    await player.cancel();
+    await player.pause();
   }
 
   Future<void> resume() async {
     if (_status != SessionStatus.paused) return;
     _anchorMs = clock.nowMs;
     _status = SessionStatus.running;
-    await _rearm(); // pause() already cancelled
+    await player.resume();
+  }
+
+  /// Follows a pause that the platform made on its own — the notification's
+  /// Pause button, pressed with no UI alive to route it through. The platform
+  /// has already stopped; this only catches the state up.
+  void holdForPlatform() {
+    if (_status != SessionStatus.running) return;
+    _elapsedAtAnchor = elapsedMs;
+    _status = SessionStatus.paused;
+  }
+
+  void releaseForPlatform() {
+    if (_status != SessionStatus.paused) return;
+    _anchorMs = clock.nowMs;
+    _status = SessionStatus.running;
+  }
+
+  /// Takes over a session the platform is already running.
+  ///
+  /// The UI can die while a workout carries on — the foreground service keeps
+  /// the cues playing long after the screen that started them is gone. Coming
+  /// back to a timer that says "Start" while it is plainly still counting is
+  /// the worst thing this app could do, so the state is picked up rather than
+  /// started again. Nothing is scheduled here: the platform already holds the
+  /// list and is playing from it.
+  void adopt({required int elapsedMs, required bool paused}) {
+    if (_timeline.isEmpty) return;
+    _elapsedAtAnchor = elapsedMs;
+    _anchorMs = clock.nowMs;
+    _status = paused ? SessionStatus.paused : SessionStatus.running;
   }
 
   /// Jumps to the end of the current phase. Nothing is skipped silently: the
@@ -160,7 +193,7 @@ class Session {
   }
 
   /// Arms what is left of the script, rebased so the next cue is relative to
-  /// now. Callers cancel first where there is something to cancel.
+  /// now. Only skipping needs this: pausing keeps the platform's own list.
   Future<void> _rearm() async => player.schedule(
     remainingFrom(_cues, _elapsedAtAnchor),
     leadMs: _leadMs,

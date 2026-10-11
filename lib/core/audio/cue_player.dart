@@ -29,6 +29,20 @@ abstract class CuePlayer {
   /// end, a stopwatch counts up from its start and has no end to count to.
   Future<void> schedule(List<Cue> cues, {int leadMs, bool countUp});
 
+  /// Holds the armed session where it is, without ending it: the cues stop,
+  /// the platform's clock stops, and everything stays up to come back to.
+  ///
+  /// Not done by cancelling and re-scheduling. The buttons that call this are
+  /// on a notification that outlives the UI, so the platform has to be able to
+  /// do it without Dart — and it already holds the list, so it can.
+  Future<void> pause();
+
+  /// Picks the session back up where [pause] left it.
+  Future<void> resume();
+
+  /// Whether the platform's session is currently held.
+  Future<bool> isPaused();
+
   /// Drops everything armed and ends the session.
   Future<void> cancel();
 
@@ -56,6 +70,10 @@ abstract class CuePlayer {
   /// Fires when the user stops the session from outside the app — the Stop
   /// button on the notification.
   Stream<void> get stopped;
+
+  /// Fires when the session is paused or resumed from outside the app, with
+  /// true for paused.
+  Stream<bool> get pauseChanged;
 }
 
 /// A [CuePlayer] that makes no sound and remembers what it was asked to do.
@@ -71,6 +89,9 @@ class FakeCuePlayer implements CuePlayer {
   final List<List<Cue>> warmed = [];
   final List<String> descriptions = [];
   final List<bool> awake = [];
+  int pauses = 0;
+  int resumes = 0;
+  bool fakePaused = false;
 
   /// Whether each schedule asked for a counting-up notification.
   final List<bool> countUps = [];
@@ -98,6 +119,21 @@ class FakeCuePlayer implements CuePlayer {
   }
 
   @override
+  Future<void> pause() async {
+    pauses++;
+    fakePaused = true;
+  }
+
+  @override
+  Future<void> resume() async {
+    resumes++;
+    fakePaused = false;
+  }
+
+  @override
+  Future<bool> isPaused() async => fakePaused;
+
+  @override
   Future<void> cancel() async => cancels++;
 
   @override
@@ -115,4 +151,7 @@ class FakeCuePlayer implements CuePlayer {
 
   @override
   Stream<void> get stopped => const Stream<void>.empty();
+
+  @override
+  Stream<bool> get pauseChanged => const Stream<bool>.empty();
 }

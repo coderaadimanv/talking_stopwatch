@@ -8,7 +8,8 @@ import '../features/stopwatch/ui/stopwatch_screen.dart';
 
 /// Five screens, one level deep. The list is home because choosing what to do
 /// is the first thing that happens, and everything else is a step away from it.
-GoRouter appRouter() => GoRouter(
+GoRouter appRouter({String initialLocation = '/'}) => GoRouter(
+  initialLocation: initialLocation,
   routes: [
     GoRoute(
       path: '/',

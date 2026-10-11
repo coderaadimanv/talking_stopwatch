@@ -52,19 +52,22 @@ void main() {
     expect(session.state.segmentRemainingMs, 27500);
   });
 
-  test('pause cancels the schedule and freezes the clock', () async {
+  test('pause holds the platform rather than cancelling it', () async {
     await session.start();
     clock.advance(12000);
     await session.pause();
 
     expect(session.state.status, SessionStatus.paused);
-    expect(player.cancels, 1);
+    expect(player.pauses, 1);
+    // Not cancelled: the platform keeps the list, which is what lets the
+    // notification's Pause button work with no UI alive.
+    expect(player.cancels, 0);
 
     clock.advance(60000);
     expect(session.state.elapsedMs, 12000, reason: 'paused time must not run');
   });
 
-  test('resume reschedules only what is left, rebased to now', () async {
+  test('resume picks it up where it stopped, arming nothing new', () async {
     await session.start();
     clock.advance(12000);
     await session.pause();
@@ -73,17 +76,49 @@ void main() {
 
     expect(session.state.status, SessionStatus.running);
     expect(session.state.elapsedMs, 12000);
-    expect(player.schedules.length, 2);
-
-    final rescheduled = player.schedules.last;
-    // Nothing from before the pause, and the next cue is now relative to zero.
-    expect(rescheduled.every((c) => c.atMs >= 0), isTrue);
-    expect(rescheduled.first.text, 'Halfway'); // 25 s absolute, 13 s away
-    expect(rescheduled.first.atMs, 13000);
-    expect(rescheduled.last.atMs, 120000 - 12000);
+    expect(player.resumes, 1);
+    expect(
+      player.schedules.length,
+      1,
+      reason: 'the platform still holds the script it was given',
+    );
 
     clock.advance(1000);
     expect(session.state.elapsedMs, 13000);
+  });
+
+  group('adopt', () {
+    test('takes over a session the platform is already running', () {
+      session.adopt(elapsedMs: 95000, paused: false);
+
+      expect(session.state.status, SessionStatus.running);
+      expect(session.state.elapsedMs, 95000);
+      expect(session.state.segment!.kind, SegmentKind.work);
+      expect(session.state.segment!.index, 3);
+
+      clock.advance(1000);
+      expect(session.state.elapsedMs, 96000);
+    });
+
+    test('takes over a held one without starting its clock', () {
+      session.adopt(elapsedMs: 42000, paused: true);
+
+      expect(session.state.status, SessionStatus.paused);
+      clock.advance(10000);
+      expect(session.state.elapsedMs, 42000);
+    });
+
+    test('arms nothing: the platform is already playing from its own list', () {
+      session.adopt(elapsedMs: 42000, paused: false);
+      expect(player.schedules, isEmpty);
+      expect(player.warmed, isEmpty);
+    });
+
+    test('does nothing with no workout loaded', () {
+      final empty = Session(player: FakeCuePlayer(), clock: FakeClock());
+      empty.adopt(elapsedMs: 5000, paused: false);
+      expect(empty.state.status, SessionStatus.idle);
+    });
   });
 
   test('skip jumps to the end of the current phase and reschedules', () async {

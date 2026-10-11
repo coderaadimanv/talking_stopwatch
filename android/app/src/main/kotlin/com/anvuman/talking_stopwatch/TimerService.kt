@@ -31,6 +31,7 @@ class TimerService : Service() {
     private var title = "Workout"
     private var text = ""
     private var endsAtWallClock = 0L
+    private var paused = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -45,6 +46,10 @@ class TimerService : Service() {
                 // The user tapped Stop on the notification. The engine tells
                 // Dart, which decides what the session does next.
                 CueEngine.stopFromNotification()
+                return START_NOT_STICKY
+            }
+            ACTION_PAUSE -> {
+                CueEngine.togglePauseFromNotification()
                 return START_NOT_STICKY
             }
             else -> {
@@ -151,11 +156,20 @@ class TimerService : Service() {
             Intent(this, TimerService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        val pause = PendingIntent.getService(
+            this,
+            2,
+            Intent(this, TimerService::class.java).setAction(ACTION_PAUSE),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
 
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
-            .setContentText(text)
+            // The phase is kept while held, so resuming goes straight back to
+            // showing it, but a held session says so: "Work" over a number
+            // that is not moving would be a lie.
+            .setContentText(if (paused) "Paused" else text)
             .setContentIntent(open)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -170,20 +184,36 @@ class TimerService : Service() {
                     Notification.CATEGORY_PROGRESS
                 },
             )
+            // Pause first: it is the one reached for most, and on a lock
+            // screen the first action is the easiest to hit.
+            .addAction(
+                Notification.Action.Builder(
+                    null,
+                    if (paused) "Resume" else "Pause",
+                    pause,
+                ).build(),
+            )
             .addAction(
                 Notification.Action.Builder(null, "Stop", stop).build(),
             )
             .apply {
                 // Android draws the chronometer itself from this one time, so
-                // nothing in this app has to tick to keep it honest.
-                setShowWhen(true)
-                setUsesChronometer(true)
-                if (endsAtWallClock > 0) {
-                    setWhen(endsAtWallClock)
-                    setChronometerCountDown(true)
+                // nothing in this app has to tick to keep it honest. A paused
+                // session has no moving number, so it shows none: a countdown
+                // running on while the workout is held would be a lie.
+                if (paused) {
+                    setShowWhen(false)
+                    setUsesChronometer(false)
                 } else {
-                    setWhen(-endsAtWallClock)
-                    setChronometerCountDown(false)
+                    setShowWhen(true)
+                    setUsesChronometer(true)
+                    if (endsAtWallClock > 0) {
+                        setWhen(endsAtWallClock)
+                        setChronometerCountDown(true)
+                    } else {
+                        setWhen(-endsAtWallClock)
+                        setChronometerCountDown(false)
+                    }
                 }
             }
             .build()
@@ -197,6 +227,7 @@ class TimerService : Service() {
         private const val RETIRED_CHANNEL_ID = "session"
         private const val NOTIFICATION_ID = 1
         private const val ACTION_STOP = "com.anvuman.talking_stopwatch.STOP"
+        private const val ACTION_PAUSE = "com.anvuman.talking_stopwatch.PAUSE"
         private const val EXTRA_TITLE = "title"
         private const val EXTRA_TEXT = "text"
         private const val EXTRA_ENDS_AT = "endsAt"
@@ -224,6 +255,19 @@ class TimerService : Service() {
 
         fun describe(title: String, text: String) {
             instance?.update(title, text)
+        }
+
+        // Holds or releases the notification's countdown. [endsAtUptime] is
+        // the new finishing line on resuming, since time spent paused does
+        // not count towards it.
+        fun setPaused(paused: Boolean, endsAtUptime: Long = 0L) {
+            val service = instance ?: return
+            service.paused = paused
+            service.update(
+                service.title,
+                service.text,
+                endsAtUptime.takeIf { it > 0 },
+            )
         }
     }
 }

@@ -25,7 +25,10 @@ void main() {
     rounds: 3,
   );
 
-  ProviderContainer makeContainer({AppSettings settings = const AppSettings()}) {
+  ProviderContainer makeContainer({
+    AppSettings settings = const AppSettings(),
+    String? running,
+  }) {
     player = FakeCuePlayer();
     clock = FakeClock();
     return ProviderContainer(
@@ -34,7 +37,11 @@ void main() {
         clockProvider.overrideWithValue(clock),
         storeProvider.overrideWithValue(Store(File('${dir.path}/data.json'))),
         initialDataProvider.overrideWithValue(
-          AppData(presets: [workout], settings: settings),
+          AppData(
+            presets: [workout],
+            settings: settings,
+            runningWorkoutId: running,
+          ),
         ),
       ],
     );
@@ -97,11 +104,13 @@ void main() {
 
     await controller().pause();
     expect(read().session.status, SessionStatus.paused);
-    expect(player.cancels, 1);
+    expect(player.pauses, 1);
+    expect(player.cancels, 0, reason: 'held, not thrown away');
 
     await controller().resume();
     expect(read().session.status, SessionStatus.running);
-    expect(player.schedules.length, 2);
+    expect(player.resumes, 1);
+    expect(player.schedules.length, 1);
 
     await controller().stop();
     expect(read().session.status, SessionStatus.idle);
@@ -157,5 +166,89 @@ void main() {
     await controller().resync();
 
     expect(player.descriptions.length, afterStart, reason: 'same phase');
+  });
+
+  // The bug this guards: the foreground service outlives the UI, so a workout
+  // can still be playing long after the screen that started it was destroyed.
+  // Coming back to a timer that says "Start" over a workout that is plainly
+  // still counting is the worst thing this app could do — and starting again
+  // would cancel it and begin from the top.
+  group('coming back to a workout already running', () {
+    test('starting writes down which workout it is', () async {
+      await controller().start();
+      expect(container.read(appDataProvider).runningWorkoutId, workout.id);
+    });
+
+    test('stopping forgets it again', () async {
+      await controller().start();
+      await controller().stop();
+      expect(container.read(appDataProvider).runningWorkoutId, isNull);
+    });
+
+    test('finishing forgets it too', () async {
+      await controller().start();
+      clock.advance(120000);
+      await controller().resync();
+      expect(read().session.status, SessionStatus.finished);
+      expect(container.read(appDataProvider).runningWorkoutId, isNull);
+    });
+
+    test('picks the session up at the platform clock, not from the top',
+        () async {
+      container.dispose();
+      container = makeContainer(running: workout.id);
+      player.fakeElapsedMs = 95000;
+
+      await controller().restore();
+
+      expect(read().session.status, SessionStatus.running);
+      expect(read().session.elapsedMs, 95000);
+      expect(read().session.segment!.kind, SegmentKind.work);
+      expect(read().session.segment!.index, 3);
+      // Nothing re-armed: the platform is already playing from its own list.
+      expect(player.schedules, isEmpty);
+    });
+
+    test('picks up a held session as held', () async {
+      container.dispose();
+      container = makeContainer(running: workout.id);
+      player
+        ..fakeElapsedMs = 42000
+        ..fakePaused = true;
+
+      await controller().restore();
+
+      expect(read().session.status, SessionStatus.paused);
+      expect(read().session.elapsedMs, 42000);
+    });
+
+    test('forgets a session the platform no longer has', () async {
+      container.dispose();
+      container = makeContainer(running: workout.id);
+      player.fakeElapsedMs = null; // the process died with it
+
+      await controller().restore();
+
+      expect(read().session.status, SessionStatus.idle);
+      expect(container.read(appDataProvider).runningWorkoutId, isNull);
+    });
+
+    test('the notification\'s Pause button is followed here', () async {
+      await controller().start();
+      clock.advance(12000);
+
+      // The platform pauses itself and tells us afterwards, because the
+      // button that did it may have had no UI to route through.
+      await player.pause();
+      container.read(runProvider.notifier).followPlatformPause(true);
+
+      expect(read().session.status, SessionStatus.paused);
+      clock.advance(30000);
+      expect(read().session.elapsedMs, 12000);
+
+      await player.resume();
+      container.read(runProvider.notifier).followPlatformPause(false);
+      expect(read().session.status, SessionStatus.running);
+    });
   });
 }

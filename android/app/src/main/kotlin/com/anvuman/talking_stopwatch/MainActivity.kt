@@ -28,6 +28,7 @@ class MainActivity : FlutterActivity() {
 
         CueEngine.onFired = { key -> channel.invokeMethod("fired", key) }
         CueEngine.onStopped = { channel.invokeMethod("stopped", null) }
+        CueEngine.onPaused = { paused -> channel.invokeMethod("paused", paused) }
 
         channel.setMethodCallHandler { call, result -> handle(call, result) }
     }
@@ -73,6 +74,18 @@ class MainActivity : FlutterActivity() {
             }
 
             "elapsed" -> result.success(CueEngine.elapsedMs())
+
+            "isPaused" -> result.success(CueEngine.isPaused())
+
+            "pause" -> {
+                CueEngine.pause()
+                result.success(null)
+            }
+
+            "resume" -> {
+                CueEngine.resume()
+                result.success(null)
+            }
 
             "describe" -> {
                 CueEngine.describe(

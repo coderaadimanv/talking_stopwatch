@@ -57,9 +57,11 @@ class AppData {
   const AppData({
     this.presets = const [],
     this.settings = const AppSettings(),
+    this.runningWorkoutId,
   });
 
   factory AppData.fromJson(Map<String, Object?> json) => AppData(
+    runningWorkoutId: json['running'] as String?,
     presets: [
       for (final p in (json['presets'] as List<Object?>? ?? const []))
         Workout.fromJson(p as Map<String, Object?>),
@@ -86,15 +88,31 @@ class AppData {
   final List<Workout> presets;
   final AppSettings settings;
 
-  AppData copyWith({List<Workout>? presets, AppSettings? settings}) => AppData(
+  /// The workout that was running when the app last wrote this file.
+  ///
+  /// Written down because the UI can die while the workout carries on, and
+  /// the platform deliberately knows nothing about workouts — it holds a list
+  /// of cues and a clock. This is the one thread back from one to the other.
+  final String? runningWorkoutId;
+
+  AppData copyWith({
+    List<Workout>? presets,
+    AppSettings? settings,
+    String? runningWorkoutId,
+    bool clearRunning = false,
+  }) => AppData(
     presets: presets ?? this.presets,
     settings: settings ?? this.settings,
+    runningWorkoutId: clearRunning
+        ? null
+        : runningWorkoutId ?? this.runningWorkoutId,
   );
 
   Map<String, Object?> toJson() => {
     'schema': storeSchema,
     'presets': [for (final p in presets) p.toJson()],
     'settings': settings.toJson(),
+    if (runningWorkoutId != null) 'running': runningWorkoutId,
   };
 }
 

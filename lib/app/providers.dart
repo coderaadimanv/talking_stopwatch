@@ -105,6 +105,14 @@ class AppDataController extends Notifier<AppData> {
 
   void editSettings(AppSettings Function(AppSettings) change) =>
       edit((data) => data.copyWith(settings: change(data.settings)));
+
+  /// Remembers which workout is running, so the app can find its way back to
+  /// it after the screen that started it is gone.
+  void setRunning(String? id) => edit(
+    (data) => id == null
+        ? data.copyWith(clearRunning: true)
+        : data.copyWith(runningWorkoutId: id),
+  );
 }
 
 final appDataProvider = NotifierProvider<AppDataController, AppData>(

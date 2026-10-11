@@ -61,9 +61,23 @@ object CueEngine {
     private var startedAt = 0L
     private var active = false
 
-    /** Told to Dart as cues play, and if the user stops from the notification. */
+    /**
+     * The list it was handed, kept so the session can be paused and picked up
+     * again without Dart. Pausing playback is a playback job, and the buttons
+     * that do it are on a notification that outlives the UI.
+     */
+    private var cues: List<Pair<Int, String>> = emptyList()
+
+    /** Elapsed time at the moment of pausing, or null while running. */
+    private var pausedAt: Long? = null
+
+    private var endsAt = 0L
+    private var countingUp = false
+
+    /** Told to Dart as cues play, and when the notification is used. */
     var onFired: ((String) -> Unit)? = null
     var onStopped: (() -> Unit)? = null
+    var onPaused: ((Boolean) -> Unit)? = null
 
     private val attributes = AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -80,9 +94,12 @@ object CueEngine {
     /** How long the session has been running, or null when there is none. */
     fun elapsedMs(): Long? {
         if (!active) return null
+        pausedAt?.let { return it }
         val elapsed = SystemClock.uptimeMillis() - startedAt
         return if (elapsed < 0) 0 else elapsed
     }
+
+    fun isPaused(): Boolean = active && pausedAt != null
 
     fun available(callback: (Boolean) -> Unit) {
         renderer?.available(callback) ?: callback(false)
@@ -117,33 +134,75 @@ object CueEngine {
         countUp: Boolean = false,
     ): Long {
         clearTimers()
-        val handler = ensureHandler()
 
-        val now = SystemClock.uptimeMillis()
-        startedAt = now + leadMs
+        this.cues = cues
+        pausedAt = null
+        countingUp = countUp
+        startedAt = SystemClock.uptimeMillis() + leadMs
         active = true
 
         val lastCueAt = cues.maxOfOrNull { it.first } ?: 0
-        val endsAt = startedAt + lastCueAt
+        endsAt = startedAt + lastCueAt
         // A stopwatch has no end to count down to, and the end of its armed
         // window is not one: it would show a countdown to nothing.
         TimerService.start(appContext, title, text, if (countUp) 0L else endsAt)
 
+        armFrom(0)
+        return startedAt
+    }
+
+    /** Posts every cue from [elapsed] onwards. */
+    private fun armFrom(elapsed: Long) {
+        val handler = ensureHandler()
         for ((atMs, key) in cues) {
+            if (atMs < elapsed) continue
             val playAt = startedAt + atMs
             handler.postAtTime({ fire(key) }, playAt)
             // A duck request in the past fires at once, which is harmless.
             handler.postAtTime({ duck() }, playAt - FOCUS_LEAD_MS)
         }
-        handler.postAtTime({ main.post { finish() } }, endsAt + TAIL_MS)
+        if (!countingUp) {
+            handler.postAtTime({ main.post { finish() } }, endsAt + TAIL_MS)
+        }
+    }
 
-        return startedAt
+    /**
+     * Holds the session where it is: the cues stop, the clock stops, and the
+     * service stays up so the notification and the wake lock are still there
+     * to come back to.
+     *
+     * Done here rather than in Dart because the buttons that call it are on a
+     * notification that outlives the UI — and because the list is already
+     * here, so picking it up again needs nothing from anybody.
+     */
+    fun pause() {
+        if (!active || pausedAt != null) return
+        pausedAt = elapsedMs() ?: 0
+        clearTimers()
+        releaseFocus()
+        TimerService.setPaused(true)
+        main.post { onPaused?.invoke(true) }
+    }
+
+    fun resume() {
+        val from = pausedAt ?: return
+        pausedAt = null
+        // Re-anchor so the clock picks up where it stopped rather than where
+        // it would have been.
+        val now = SystemClock.uptimeMillis()
+        startedAt = now - from
+        endsAt = startedAt + (cues.maxOfOrNull { it.first } ?: 0)
+        TimerService.setPaused(false, if (countingUp) 0L else endsAt)
+        armFrom(from)
+        main.post { onPaused?.invoke(false) }
     }
 
     /** Drops everything armed and ends the session. */
     fun cancel() {
         clearTimers()
         active = false
+        pausedAt = null
+        cues = emptyList()
         releaseFocus()
         TimerService.stop(appContext)
     }
@@ -154,6 +213,11 @@ object CueEngine {
         main.post { onStopped?.invoke() }
     }
 
+    /** The Pause / Resume button on the notification. */
+    fun togglePauseFromNotification() {
+        if (pausedAt == null) pause() else resume()
+    }
+
     /** Updates what the notification says, while Dart is awake to say it. */
     fun describe(title: String, text: String) {
         if (active) TimerService.describe(title, text)
@@ -162,6 +226,8 @@ object CueEngine {
     /** The session ran to its end on its own. */
     private fun finish() {
         active = false
+        pausedAt = null
+        cues = emptyList()
         releaseFocus()
         TimerService.stop(appContext)
     }
@@ -271,5 +337,6 @@ object CueEngine {
     fun detachListeners() {
         onFired = null
         onStopped = null
+        onPaused = null
     }
 }

@@ -22,6 +22,7 @@ class PlatformCuePlayer implements CuePlayer {
   final MethodChannel _channel;
   final _fired = StreamController<String>.broadcast();
   final _stopped = StreamController<void>.broadcast();
+  final _pauseChanged = StreamController<bool>.broadcast();
 
   String _title = 'Workout';
   String _text = '';
@@ -35,6 +36,9 @@ class PlatformCuePlayer implements CuePlayer {
   @override
   Stream<void> get stopped => _stopped.stream;
 
+  @override
+  Stream<bool> get pauseChanged => _pauseChanged.stream;
+
   Future<void> _onCall(MethodCall call) async {
     switch (call.method) {
       case 'fired':
@@ -42,6 +46,9 @@ class PlatformCuePlayer implements CuePlayer {
         if (key is String) _fired.add(key);
       case 'stopped':
         _stopped.add(null);
+      case 'paused':
+        final paused = call.arguments;
+        if (paused is bool) _pauseChanged.add(paused);
     }
   }
 
@@ -84,6 +91,15 @@ class PlatformCuePlayer implements CuePlayer {
   }
 
   @override
+  Future<void> pause() => _invoke<void>('pause');
+
+  @override
+  Future<void> resume() => _invoke<void>('resume');
+
+  @override
+  Future<bool> isPaused() async => await _invoke<bool>('isPaused') ?? false;
+
+  @override
   Future<void> cancel() => _invoke<void>('cancel');
 
   @override
@@ -115,5 +131,6 @@ class PlatformCuePlayer implements CuePlayer {
   void dispose() {
     _fired.close();
     _stopped.close();
+    _pauseChanged.close();
   }
 }
