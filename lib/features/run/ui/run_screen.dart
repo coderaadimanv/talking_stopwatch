@@ -1,20 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/palette.dart';
 import '../../../app/providers.dart';
 import '../../../app/sizes.dart';
+import '../../../core/format.dart';
 import '../../../core/session/session.dart';
-import '../../../core/timeline/timeline.dart';
+import '../../../core/timeline/summary.dart';
 import '../../../core/timeline/workout.dart';
 import '../domain/run_controller.dart';
-
-String mmss(int ms) {
-  final total = (ms / 1000).ceil();
-  final minutes = total ~/ 60;
-  final seconds = total % 60;
-  return '$minutes:${seconds.toString().padLeft(2, '0')}';
-}
 
 /// The one screen that matters, and the one the user is trying not to look at.
 ///
@@ -60,13 +55,24 @@ class _RunScreenState extends ConsumerState<RunScreen> {
 
     return Scaffold(
       backgroundColor: background,
+      // No app bar once it is running: nothing should compete with the number,
+      // and leaving mid-workout is what Stop is for.
+      appBar: session.isActive
+          ? null
+          : AppBar(
+              backgroundColor: background,
+              leading: IconButton(
+                onPressed: () => context.go('/'),
+                icon: const Icon(Icons.arrow_back),
+              ),
+            ),
       body: SafeArea(
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           color: background,
           padding: const EdgeInsets.all(Sizes.gutter),
           child: switch (session.status) {
-            SessionStatus.idle => const _Setup(),
+            SessionStatus.idle => const _Ready(),
             SessionStatus.finished => const _Finished(),
             _ => _Running(session: session),
           },
@@ -76,79 +82,43 @@ class _RunScreenState extends ConsumerState<RunScreen> {
   }
 }
 
-/// Before the start: set the interval and go. The preset list and the full
-/// editor arrive in phase 3; this is the smallest thing that is actually
-/// usable for a workout.
-class _Setup extends ConsumerWidget {
-  const _Setup();
+/// What a workout looks like before it starts: what you are about to do, how
+/// long it takes, and one button the size of a thumb.
+class _Ready extends ConsumerWidget {
+  const _Ready();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final workout = ref.watch(workoutProvider);
-    final round = workout.rounds.first;
-    final total = expand(workout).totalMs;
-    final controller = ref.read(appDataProvider.notifier);
     final run = ref.watch(runProvider);
     final hasVoice = ref.watch(voiceAvailableProvider).asData?.value ?? true;
+    final text = Theme.of(context).textTheme;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          'Talking Stopwatch',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: Sizes.bigGap),
-        _Number(
-          label: 'Work',
-          value: '${round.workSeconds}s',
-          onChange: (by) => controller.editWorkout(
-            (w) => w.copyWith(
-              rounds: [
-                round.copyWith(
-                  workSeconds: (round.workSeconds + by * 5).clamp(5, 600),
-                ),
-              ],
-            ),
-          ),
-        ),
-        _Number(
-          label: 'Rest',
-          value: '${round.restSeconds}s',
-          onChange: (by) => controller.editWorkout(
-            (w) => w.copyWith(
-              rounds: [
-                round.copyWith(
-                  restSeconds: (round.restSeconds + by * 5).clamp(0, 300),
-                ),
-              ],
-            ),
-          ),
-        ),
-        _Number(
-          label: 'Rounds',
-          value: '${workout.repeats}',
-          onChange: (by) => controller.editWorkout(
-            (w) => w.copyWith(repeats: (w.repeats + by).clamp(1, 60)),
-          ),
+          workout.name.isEmpty ? 'Workout' : workout.name,
+          textAlign: TextAlign.center,
+          style: text.headlineSmall,
         ),
         const SizedBox(height: Sizes.gap),
-        Text(
-          'Total ${mmss(total)}',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        if (!hasVoice) ...[
-          const SizedBox(height: Sizes.gap),
-          Text(
-            'This phone has no voice installed, so the timer will '
-            'run without speaking.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: context.colors.danger,
-            ),
-          ),
-        ],
+        Text(workout.summary, style: text.bodyLarge),
         const SizedBox(height: Sizes.bigGap),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(workout.totalLabel, style: text.displayLarge),
+        ),
+        const SizedBox(height: Sizes.bigGap),
+        if (!hasVoice) ...[
+          Text(
+            'This phone has no voice installed, so the timer will run '
+            'without speaking.',
+            textAlign: TextAlign.center,
+            style: text.bodySmall?.copyWith(color: context.colors.danger),
+          ),
+          const SizedBox(height: Sizes.gap),
+        ],
         SizedBox(
           height: Sizes.bigControl,
           width: double.infinity,
@@ -159,49 +129,14 @@ class _Setup extends ConsumerWidget {
             child: Text(run.preparing ? 'Getting ready…' : 'Start'),
           ),
         ),
+        const SizedBox(height: Sizes.gap),
+        TextButton(
+          onPressed: () => context.go('/edit/${workout.id}'),
+          child: const Text('Edit'),
+        ),
       ],
     );
   }
-}
-
-class _Number extends StatelessWidget {
-  const _Number({
-    required this.label,
-    required this.value,
-    required this.onChange,
-  });
-
-  final String label;
-  final String value;
-  final void Function(int by) onChange;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: Sizes.row,
-    child: Row(
-      children: [
-        Expanded(
-          child: Text(label, style: Theme.of(context).textTheme.titleMedium),
-        ),
-        IconButton.filledTonal(
-          onPressed: () => onChange(-1),
-          icon: const Icon(Icons.remove),
-        ),
-        SizedBox(
-          width: Sizes.bigControl,
-          child: Text(
-            value,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-        ),
-        IconButton.filledTonal(
-          onPressed: () => onChange(1),
-          icon: const Icon(Icons.add),
-        ),
-      ],
-    ),
-  );
 }
 
 class _Running extends ConsumerWidget {
@@ -231,7 +166,7 @@ class _Running extends ConsumerWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
-            mmss(session.segmentRemainingMs),
+            countdown(session.segmentRemainingMs),
             style: text.displayLarge?.copyWith(color: on),
           ),
         ),
@@ -244,31 +179,38 @@ class _Running extends ConsumerWidget {
           ),
         const SizedBox(height: Sizes.gap),
         Text(
-          paused ? 'Paused' : '${mmss(session.remainingMs)} left',
+          paused ? 'Paused' : '${countdown(session.remainingMs)} left',
           style: text.bodyMedium?.copyWith(color: on),
         ),
         const Spacer(),
+        // Each control takes a third of whatever width there is: three
+        // fixed-width buttons fit a 360dp phone and overflow a 320dp one.
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _Control(
-              icon: Icons.stop,
-              label: 'Stop',
-              accent: accent,
-              onPressed: controller.stop,
+            Expanded(
+              child: _Control(
+                icon: Icons.stop,
+                label: 'Stop',
+                accent: accent,
+                onPressed: controller.stop,
+              ),
             ),
-            _Control(
-              icon: paused ? Icons.play_arrow : Icons.pause,
-              label: paused ? 'Resume' : 'Pause',
-              accent: accent,
-              big: true,
-              onPressed: paused ? controller.resume : controller.pause,
+            Expanded(
+              child: _Control(
+                icon: paused ? Icons.play_arrow : Icons.pause,
+                label: paused ? 'Resume' : 'Pause',
+                accent: accent,
+                big: true,
+                onPressed: paused ? controller.resume : controller.pause,
+              ),
             ),
-            _Control(
-              icon: Icons.skip_next,
-              label: 'Skip',
-              accent: accent,
-              onPressed: controller.skip,
+            Expanded(
+              child: _Control(
+                icon: Icons.skip_next,
+                label: 'Skip',
+                accent: accent,
+                onPressed: controller.skip,
+              ),
             ),
           ],
         ),
@@ -356,6 +298,14 @@ class _Finished extends ConsumerWidget {
           onPressed: ref.read(runProvider.notifier).stop,
           child: const Text('Again'),
         ),
+      ),
+      const SizedBox(height: Sizes.gap),
+      TextButton(
+        onPressed: () async {
+          await ref.read(runProvider.notifier).stop();
+          if (context.mounted) context.go('/');
+        },
+        child: const Text('Back to the list'),
       ),
     ],
   );

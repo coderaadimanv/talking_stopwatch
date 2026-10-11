@@ -53,7 +53,8 @@ class TimerService : Service() {
                 endsAtWallClock = if (endsAtUptime > 0) {
                     System.currentTimeMillis() + (endsAtUptime - SystemClock.uptimeMillis())
                 } else {
-                    0L
+                    // No end: count up from now instead.
+                    -System.currentTimeMillis()
                 }
                 startForeground(
                     NOTIFICATION_ID,
@@ -138,12 +139,16 @@ class TimerService : Service() {
                 Notification.Action.Builder(null, "Stop", stop).build(),
             )
             .apply {
+                // Android draws the chronometer itself from this one time, so
+                // nothing in this app has to tick to keep it honest.
+                setShowWhen(true)
+                setUsesChronometer(true)
                 if (endsAtWallClock > 0) {
-                    // Android draws the countdown itself from this target.
                     setWhen(endsAtWallClock)
-                    setShowWhen(true)
-                    setUsesChronometer(true)
                     setChronometerCountDown(true)
+                } else {
+                    setWhen(-endsAtWallClock)
+                    setChronometerCountDown(false)
                 }
             }
             .build()
