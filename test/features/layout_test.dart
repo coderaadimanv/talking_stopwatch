@@ -130,6 +130,25 @@ void main() {
         await container.read(runProvider.notifier).stop();
       });
 
+      testWidgets('a finished workout fits', (tester) async {
+        await pumpAt(tester, const RunScreen(), size: size);
+        final run = container.read(runProvider.notifier);
+        await run.start();
+
+        // Run the clock past the end of the whole workout. The state is a
+        // snapshot the ticker publishes, so it has to be asked to republish —
+        // which is what the app itself does when it comes back to the front.
+        (container.read(clockProvider) as FakeClock).advance(60 * 60 * 1000);
+        await run.resync();
+        await tester.pump();
+
+        expect(find.text('Done'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        expectOneLine(tester, 'Workouts', shortEnoughToNeverWrap: 'Again');
+
+        await run.stop();
+      });
+
       testWidgets('the stopwatch fits, laps and all', (tester) async {
         await pumpAt(tester, const StopwatchScreen(), size: size);
 

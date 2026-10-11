@@ -62,6 +62,16 @@ abstract final class Shadows {
   static const control = [
     BoxShadow(color: Color(0x33000000), blurRadius: 14, offset: Offset(0, 6)),
   ];
+
+  /// Light spilling out of something, rather than a shadow falling under it.
+  /// Only for the one action a screen is really offering.
+  static List<BoxShadow> glow(Color color) => [
+    BoxShadow(
+      color: color.withValues(alpha: 0.38),
+      blurRadius: 26,
+      offset: const Offset(0, 8),
+    ),
+  ];
 }
 
 /// The colour of each phase on the run screen.
@@ -156,6 +166,14 @@ abstract final class Sizes {
 
   /// A dot in the round tracker.
   static const dot = 10.0;
+
+  /// The marks around the ring on the screen before a workout starts.
+  static const tick = 9.0;
+  static const tickMajor = 15.0;
+  static const tickWidth = 2.0;
+
+  /// A pill-shaped action.
+  static const pill = 60.0;
 
   /// The small icon inside a chip.
   static const chipIcon = 16.0;
@@ -281,6 +299,14 @@ class AppColors extends ThemeExtension<AppColors> {
 
   /// The stopwatch has no phase of its own, so it wears the brand's accent.
   Color get stopwatch => work;
+
+  /// The fill of the one action a screen is really offering. Lit from the
+  /// left, so a wide button does not read as a flat slab of colour.
+  LinearGradient gradientOn(Color ground) => LinearGradient(
+    colors: [ground, deepOf(ground)],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
 
   /// What to draw on top of a phase colour.
   ///

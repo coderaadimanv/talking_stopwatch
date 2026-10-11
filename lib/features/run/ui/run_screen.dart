@@ -6,6 +6,8 @@ import '../../../app/providers.dart';
 import '../../../app/style.dart';
 import '../../../app/widgets/circle_badge.dart';
 import '../../../app/widgets/circle_control.dart';
+import '../../../app/widgets/pill_button.dart';
+import '../../../app/widgets/tick_ring.dart';
 import '../../../app/widgets/dial.dart';
 import '../../../app/widgets/round_tracker.dart';
 import '../../../app/widgets/soft_background.dart';
@@ -65,10 +67,15 @@ class _RunScreenState extends ConsumerState<RunScreen> {
       appBar: session.isActive
           ? null
           : AppBar(
-              backgroundColor: background,
-              leading: IconButton(
-                onPressed: () => context.go('/'),
-                icon: const Icon(Icons.arrow_back),
+              backgroundColor: Brand.transparent,
+              leadingWidth: Sizes.bigControl,
+              leading: Padding(
+                padding: const EdgeInsets.only(left: Sizes.gap),
+                child: IconButton(
+                  onPressed: () => context.go('/'),
+                  style: chipIconButton(),
+                  icon: const Icon(Icons.arrow_back),
+                ),
               ),
             ),
       body: _Ground(
@@ -98,12 +105,21 @@ class _Ground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => color == null
-      ? child
+      // Nothing running: the app's own dark ground, lit by the accent.
+      ? SoftBackground(
+          color: Brand.ink,
+          glow: context.colors.work,
+          child: child,
+        )
       : SoftBackground(color: color!, child: child);
 }
 
-/// What a workout looks like before it starts: what you are about to do, how
-/// long it takes, and one button the size of a thumb.
+/// What a workout looks like before it starts.
+///
+/// The running screen's anatomy, held still: the same badge, name and caption
+/// at the top, and a ring where the dial will be. There is no progress to draw
+/// yet, so the ring is marked rather than filled — an empty arc would only ask
+/// to be read as zero.
 class _Ready extends ConsumerWidget {
   const _Ready();
 
@@ -112,60 +128,113 @@ class _Ready extends ConsumerWidget {
     final workout = ref.watch(workoutProvider);
     final run = ref.watch(runProvider);
     final hasVoice = ref.watch(voiceAvailableProvider).asData?.value ?? true;
+    final colors = context.colors;
+    final accent = colors.work;
     final text = Theme.of(context).textTheme;
 
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(
-          workout.name.isEmpty ? 'Workout' : workout.name,
-          textAlign: TextAlign.center,
-          style: text.headlineSmall,
+        CircleBadge.icon(
+          background: Brand.accentWash,
+          ring: accent,
+          icon: Icons.directions_run_rounded,
+          color: accent,
         ),
         const SizedBox(height: Sizes.gap),
-        Text(workout.summary, style: text.bodyLarge),
+        Text('Workout', style: text.headlineLarge),
+        Text('GET READY', style: text.labelLarge),
         const SizedBox(height: Sizes.bigGap),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(workout.totalLabel, style: text.displayLarge),
+
+        // Which workout, under what you are about to do.
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(Sizes.gap),
+            child: Row(
+              children: [
+                Icon(Icons.timer_outlined, color: accent, size: Sizes.bigIcon),
+                const SizedBox(width: Sizes.gap),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        workout.name.isEmpty ? 'Untitled' : workout.name,
+                        style: text.titleMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        workout.summary,
+                        style: text.bodyMedium,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        const SizedBox(height: Sizes.bigGap),
+
+        Expanded(
+          child: Center(
+            child: TickRing(
+              color: accent,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  workout.totalLabel,
+                  style: text.displayLarge?.copyWith(
+                    // Lit from within, which is the only thing separating a
+                    // waiting clock from a stopped one.
+                    shadows: [
+                      Shadow(
+                        color: accent.withValues(alpha: 0.55),
+                        blurRadius: 32,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+
         if (!hasVoice) ...[
           Text(
             'This phone has no voice installed, so the timer will run '
             'without speaking.',
             textAlign: TextAlign.center,
-            style: text.bodySmall?.copyWith(color: context.colors.danger),
+            style: text.bodySmall?.copyWith(color: colors.danger),
           ),
           const SizedBox(height: Sizes.gap),
         ],
-        SizedBox(
-          height: Sizes.bigControl,
-          width: double.infinity,
-          child: FilledButton(
-            onPressed: run.preparing
-                ? null
-                : () => ref.read(runProvider.notifier).start(),
-            child: ActionLabel(run.preparing ? 'Getting ready…' : 'Start'),
-          ),
+
+        PillButton.primary(
+          icon: Icons.play_arrow_rounded,
+          label: run.preparing ? 'Getting ready…' : 'Start',
+          accent: accent,
+          foreground: colors.readableOn(accent),
+          onPressed: run.preparing
+              ? null
+              : () => ref.read(runProvider.notifier).start(),
         ),
         const SizedBox(height: Sizes.gap),
-        TextButton(
-          onPressed: () => context.go('/edit/${workout.id}'),
-          child: const Text('Edit'),
+        FractionallySizedBox(
+          widthFactor: 0.56,
+          child: PillButton.outlined(
+            icon: Icons.edit_outlined,
+            label: 'Edit',
+            accent: accent,
+            onPressed: () => context.go('/edit/${workout.id}'),
+          ),
         ),
       ],
     );
   }
 }
 
-/// A workout in progress, and the screen the whole app exists for.
-///
-/// Read from across a room: the colour says which phase, the arc says how far
-/// through, and only a proper look needs the number. The number itself sits on
-/// the pale dial rather than on the phase colour, which is where it gets its
-/// contrast — the heading and caption are the parts that can afford to be
-/// softer.
 class _Running extends ConsumerWidget {
   const _Running({required this.session});
 
@@ -370,31 +439,54 @@ class _Chip extends StatelessWidget {
   }
 }
 
+/// The end of a workout, in the same shape as its start.
 class _Finished extends ConsumerWidget {
   const _Finished();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Column(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-      Text('Done', style: Theme.of(context).textTheme.displayLarge),
-      const SizedBox(height: Sizes.bigGap),
-      SizedBox(
-        height: Sizes.bigControl,
-        width: double.infinity,
-        child: FilledButton(
-          onPressed: ref.read(runProvider.notifier).stop,
-          child: const ActionLabel('Again'),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final accent = colors.work;
+    final text = Theme.of(context).textTheme;
+    final workout = ref.watch(workoutProvider);
+
+    return Column(
+      children: [
+        const Spacer(),
+        CircleBadge.icon(
+          background: Brand.accentWash,
+          ring: accent,
+          icon: Icons.check_rounded,
+          color: accent,
         ),
-      ),
-      const SizedBox(height: Sizes.gap),
-      TextButton(
-        onPressed: () async {
-          await ref.read(runProvider.notifier).stop();
-          if (context.mounted) context.go('/');
-        },
-        child: const Text('Back to the list'),
-      ),
-    ],
-  );
+        const SizedBox(height: Sizes.gap),
+        Text('Done', style: text.headlineLarge),
+        Text(
+          workout.totalLabel.toUpperCase(),
+          style: text.labelLarge,
+        ),
+        const Spacer(),
+        PillButton.primary(
+          icon: Icons.replay_rounded,
+          label: 'Again',
+          accent: accent,
+          foreground: colors.readableOn(accent),
+          onPressed: ref.read(runProvider.notifier).stop,
+        ),
+        const SizedBox(height: Sizes.gap),
+        FractionallySizedBox(
+          widthFactor: 0.56,
+          child: PillButton.outlined(
+            icon: Icons.list_rounded,
+            label: 'Workouts',
+            accent: accent,
+            onPressed: () async {
+              await ref.read(runProvider.notifier).stop();
+              if (context.mounted) context.go('/');
+            },
+          ),
+        ),
+      ],
+    );
+  }
 }
