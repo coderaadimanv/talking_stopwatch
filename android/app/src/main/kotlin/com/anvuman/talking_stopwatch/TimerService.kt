@@ -232,6 +232,28 @@ class TimerService : Service() {
         private const val EXTRA_TEXT = "text"
         private const val EXTRA_ENDS_AT = "endsAt"
 
+        /**
+         * Whether a session notification would actually be seen.
+         *
+         * Two independent switches can hide it and both have to be asked
+         * about: the app-level permission, which Android 13 offers once and
+         * never again after a refusal, and this channel, which the user can
+         * switch off from the notification itself without touching the
+         * permission. Either one off means an empty lock screen and no Pause
+         * or Stop button — while the session runs exactly as before, which is
+         * why nothing here is treated as an error.
+         *
+         * A channel that does not exist yet is not a refusal. It is created
+         * the first time the service starts.
+         */
+        fun canNotify(context: Context): Boolean {
+            val manager =
+                context.getSystemService(NotificationManager::class.java) ?: return false
+            if (!manager.areNotificationsEnabled()) return false
+            val channel = manager.getNotificationChannel(CHANNEL_ID) ?: return true
+            return channel.importance != NotificationManager.IMPORTANCE_NONE
+        }
+
         /** The running service, so the engine can talk to it directly. */
         private var instance: TimerService? = null
 

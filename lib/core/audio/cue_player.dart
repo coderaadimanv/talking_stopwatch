@@ -67,6 +67,26 @@ abstract class CuePlayer {
   /// whether the user can see the session, never whether it runs.
   Future<void> askToNotify();
 
+  /// Whether the session would actually be visible: true when a notification
+  /// can be shown, false when every route to one is switched off, and **null
+  /// where the question does not apply** — iOS, where the lock-screen controls
+  /// come with the audio session and no permission is involved, and any
+  /// platform the native half does not answer for.
+  ///
+  /// Null and false are deliberately different. A workout runs and talks
+  /// either way; the only thing a denial costs is the lock screen, so this
+  /// exists to explain one that stayed empty, and that is worth saying only
+  /// where it is actually true.
+  Future<bool?> canNotify();
+
+  /// Opens the system screen where the session notification can be switched
+  /// back on.
+  ///
+  /// Not another in-app prompt: Android spends its one notification prompt on
+  /// the first refusal and a later request does nothing at all, silently. The
+  /// system screen always works.
+  Future<void> openNotifySettings();
+
   /// Fires when the user stops the session from outside the app — the Stop
   /// button on the notification.
   Stream<void> get stopped;
@@ -98,6 +118,10 @@ class FakeCuePlayer implements CuePlayer {
   int cancels = 0;
   int asks = 0;
   int? fakeElapsedMs;
+
+  /// What [canNotify] answers. Null is the iOS answer: not a question here.
+  bool? notifyAllowed = true;
+  int notifySettingsOpened = 0;
 
   /// The most recent schedule, or null if nothing has been armed.
   List<Cue>? get lastSchedule => schedules.isEmpty ? null : schedules.last;
@@ -148,6 +172,12 @@ class FakeCuePlayer implements CuePlayer {
 
   @override
   Future<void> askToNotify() async => asks++;
+
+  @override
+  Future<bool?> canNotify() async => notifyAllowed;
+
+  @override
+  Future<void> openNotifySettings() async => notifySettingsOpened++;
 
   @override
   Stream<void> get stopped => const Stream<void>.empty();

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:talking_stopwatch/app/style.dart';
@@ -94,6 +95,18 @@ void main() {
         tester.getSize(find.text(shortEnoughToNeverWrap)).height,
       ),
       reason: '"$label" wrapped, where "$shortEnoughToNeverWrap" did not',
+    );
+  }
+
+  /// The same job as [expectOneLine] where the screen has no short label in
+  /// the same style to measure against: a paragraph knows the height of one of
+  /// its own lines, so ask it rather than guess a threshold.
+  void expectSingleLine(WidgetTester tester, String label) {
+    final paragraph = tester.renderObject<RenderParagraph>(find.text(label));
+    expect(
+      paragraph.size.height,
+      lessThan(paragraph.preferredLineHeight * 2),
+      reason: '"$label" wrapped onto a second line',
     );
   }
 
@@ -194,6 +207,37 @@ void main() {
         await tester.drag(find.byType(ListView), const Offset(0, -400));
         await tester.pump();
         expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('settings fit with both notices up', (tester) async {
+        // The worst case for this screen: no voice and no notifications, so
+        // both notices are up and the longest prose in the app is above the
+        // fold. The notification one carries an action row of a fixed height,
+        // which is the only thing here that cannot grow to fit its label —
+        // and a label that wraps inside it does not overflow, so nothing
+        // would throw.
+        container.dispose();
+        container = ProviderContainer(
+          overrides: [
+            cuePlayerProvider.overrideWithValue(
+              FakeCuePlayer(hasVoice: false)..notifyAllowed = false,
+            ),
+            clockProvider.overrideWithValue(FakeClock()),
+            storeProvider.overrideWithValue(
+              Store(File('${dir.path}/data.json')),
+            ),
+            initialDataProvider.overrideWithValue(AppData(presets: [workout])),
+          ],
+        );
+
+        await pumpAt(tester, const SettingsScreen(), size: size);
+        // The platform answers both questions a frame later.
+        await tester.pump();
+
+        expect(find.text('Notifications are off'), findsOneWidget);
+        expect(find.text('This phone has no voice installed'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        expectSingleLine(tester, 'Turn them on');
       });
     });
   }

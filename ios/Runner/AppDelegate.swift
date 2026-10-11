@@ -96,9 +96,12 @@ import UIKit
       UIApplication.shared.isIdleTimerDisabled = arguments["on"] as? Bool ?? false
       result(nil)
 
-    // Android only: there is no notification here to ask permission for. The
-    // lock-screen controls come with the audio session.
-    case "askToNotify":
+    // Android only: there is no notification here to ask permission for, to
+    // check, or to send anyone to a settings screen for. The lock-screen
+    // controls come with the audio session. `canNotify` answering nil is what
+    // tells Dart the question does not apply here, so the settings screen
+    // never offers to fix a permission that does not exist.
+    case "askToNotify", "canNotify", "openNotifySettings":
       result(nil)
 
     default:

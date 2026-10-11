@@ -37,6 +37,20 @@ final voiceAvailableProvider = FutureProvider<bool>(
   (ref) => ref.watch(cuePlayerProvider).available(),
 );
 
+/// Whether the session notification would actually be seen: false when it is
+/// switched off, null where that is not a question at all (see
+/// [CuePlayer.canNotify]).
+///
+/// Asked again every time something starts watching it, and that is the point.
+/// The answer changes outside the app and nothing tells us when: it is a
+/// system screen we send the user to, or the "turn these off" on the
+/// notification itself, weeks later. So it is kept no longer than it is being
+/// looked at, and settings invalidates it on resume as well, for the case
+/// where the screen stayed open across the change.
+final canNotifyProvider = FutureProvider.autoDispose<bool?>(
+  (ref) => ref.watch(cuePlayerProvider).canNotify(),
+);
+
 /// Everything saved, held in memory and written back on every change.
 class AppDataController extends Notifier<AppData> {
   @override
