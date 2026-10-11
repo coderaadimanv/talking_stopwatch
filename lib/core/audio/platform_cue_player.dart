@@ -118,6 +118,12 @@ class PlatformCuePlayer implements CuePlayer {
   @override
   Future<void> askToNotify() => _invoke<void>('askToNotify');
 
+  @override
+  Future<bool?> canNotify() => _invoke<bool>('canNotify');
+
+  @override
+  Future<void> openNotifySettings() => _invoke<void>('openNotifySettings');
+
   Future<T?> _invoke<T>(String method, [Map<String, Object?>? args]) async {
     try {
       return await _channel.invokeMethod<T>(method, args);

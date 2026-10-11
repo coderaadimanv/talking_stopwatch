@@ -99,6 +99,27 @@ void main() {
     expect(calls.map((c) => c.method), contains('askToNotify'));
   });
 
+  group('whether the session can be seen', () {
+    test('comes from the platform', () async {
+      reply = false;
+      expect(await player.canNotify(), isFalse);
+      reply = true;
+      expect(await player.canNotify(), isTrue);
+    });
+
+    test('is not a question everywhere, and says so', () async {
+      // iOS answers nothing: its lock-screen controls come with the audio
+      // session and no permission is involved. Null means do not ask.
+      reply = null;
+      expect(await player.canNotify(), isNull);
+    });
+
+    test('can be sent to the system screen that turns it back on', () async {
+      await player.openNotifySettings();
+      expect(calls.map((c) => c.method), contains('openNotifySettings'));
+    });
+  });
+
   group('degrading instead of throwing', () {
     test('a platform error leaves the timer running silently', () async {
       onCall = (_) => throw PlatformException(code: 'boom');
@@ -109,8 +130,12 @@ void main() {
       await player.describe('x', 'y');
       await player.cancel();
       await player.keepAwake(true);
+      await player.openNotifySettings();
       expect(await player.available(), isFalse);
       expect(await player.elapsedMs(), isNull);
+      // Unknown, not "off": a notice about a missing notification is the last
+      // thing to show on a phone where the question could not even be asked.
+      expect(await player.canNotify(), isNull);
     });
 
     test('a platform with no native half reports no voice', () async {

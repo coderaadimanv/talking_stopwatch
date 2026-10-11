@@ -1,8 +1,12 @@
 package com.anvuman.talking_stopwatch
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -117,7 +121,46 @@ class MainActivity : FlutterActivity() {
                 result.success(null)
             }
 
+            // Asked by the settings screen, to explain a lock screen that
+            // stayed empty. Nothing here acts on the answer: the session runs
+            // whatever it is.
+            "canNotify" -> result.success(TimerService.canNotify(this))
+
+            "openNotifySettings" -> {
+                openNotifySettings()
+                result.success(null)
+            }
+
             else -> result.notImplemented()
+        }
+    }
+
+    /**
+     * The system's own notification screen for this app.
+     *
+     * Deliberately not another in-app prompt. Android allows
+     * POST_NOTIFICATIONS exactly one dialog: after a refusal
+     * `requestPermissions` reports denied without showing anything, so a
+     * button that promised to ask would quietly do nothing. This screen
+     * always works, and the app's details screen is the fallback for a build
+     * that is missing the first.
+     */
+    private fun openNotifySettings() {
+        val routes = listOf(
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, packageName),
+            Intent(
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.fromParts("package", packageName, null),
+            ),
+        )
+        for (route in routes) {
+            try {
+                startActivity(route)
+                return
+            } catch (_: ActivityNotFoundException) {
+                // Try the next one.
+            }
         }
     }
 

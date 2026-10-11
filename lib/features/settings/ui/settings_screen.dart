@@ -8,17 +8,46 @@ import '../../../app/widgets/section.dart';
 import '../../../app/widgets/soft_background.dart';
 import '../../../core/cues/cue.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
+  @override
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   /// How far the calibration slider goes either way.
   static const _offsetRangeMs = 500;
 
+  late final AppLifecycleListener _lifecycle;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    // Turning notifications back on happens on a system screen, so the app is
+    // in the background while the answer changes and coming back is the only
+    // notice it gets. Without this the notice stays up after it has been
+    // fixed, which reads as the fix not having worked.
+    _lifecycle = AppLifecycleListener(
+      onResume: () => ref.invalidate(canNotifyProvider),
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final settings = ref.watch(appDataProvider).settings;
     final data = ref.read(appDataProvider.notifier);
     final hasVoice = ref.watch(voiceAvailableProvider).asData?.value ?? true;
+    // Nothing until the platform has answered, and nothing at all where the
+    // question does not apply: a notice about a missing permission is worse
+    // than useless on a phone that has no such permission.
+    final canNotify = ref.watch(canNotifyProvider).asData?.value;
     final colors = context.colors;
     final text = Theme.of(context).textTheme;
 
@@ -49,16 +78,28 @@ class SettingsScreen extends ConsumerWidget {
             ),
             children: [
               if (!hasVoice) ...[
-                Card(
-                  child: ListTile(
-                    leading: Icon(Icons.volume_off, color: colors.danger),
-                    title: const Text('This phone has no voice installed'),
-                    subtitle: const Text(
+                const _Notice(
+                  icon: Icons.volume_off,
+                  title: 'This phone has no voice installed',
+                  body:
                       'Timers still run, they just will not speak. Install a '
                       'text-to-speech voice in Android settings.',
-                    ),
-                    isThreeLine: true,
-                  ),
+                ),
+                const SizedBox(height: Sizes.gap),
+              ],
+
+              if (canNotify == false) ...[
+                _Notice(
+                  icon: Icons.notifications_off_outlined,
+                  title: 'Notifications are off',
+                  body:
+                      'Workouts still run and still talk. What is missing is '
+                      'the session on your lock screen: the countdown, and '
+                      'the Pause and Stop buttons that work without '
+                      'unlocking the phone.',
+                  actionLabel: 'Turn them on',
+                  onAction: () =>
+                      ref.read(cuePlayerProvider).openNotifySettings(),
                 ),
                 const SizedBox(height: Sizes.gap),
               ],
@@ -141,7 +182,7 @@ class SettingsScreen extends ConsumerWidget {
                   _ActionRow(
                     icon: Icons.volume_up_rounded,
                     label: 'Test the voice',
-                    onTap: () => _testVoice(ref),
+                    onTap: _testVoice,
                   ),
                 ],
               ),
@@ -173,12 +214,64 @@ class SettingsScreen extends ConsumerWidget {
 
   /// Says one word down the real path — rendered, cached and scheduled — so
   /// what you hear is what a cue will sound like, delay and all.
-  Future<void> _testVoice(WidgetRef ref) async {
+  Future<void> _testVoice() async {
     const cue = Cue(atMs: 0, text: 'Go', priority: CuePriority.phaseWord);
     final player = ref.read(cuePlayerProvider);
     await player.describe('Talking Stopwatch', 'Testing the voice');
     await player.warm(const [cue]);
     await player.schedule(const [cue], countUp: true);
+  }
+}
+
+/// Something wrong with the phone rather than something to choose.
+///
+/// Both notices cost the app something it cannot fix for itself and neither
+/// stops a workout running, which is why they sit above the settings instead
+/// of among them: there is nothing to set, only something to go and do.
+class _Notice extends StatelessWidget {
+  const _Notice({
+    required this.icon,
+    required this.title,
+    required this.body,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: Icon(icon, color: colors.danger),
+            title: Text(title),
+            subtitle: Text(body),
+            isThreeLine: true,
+          ),
+          if (actionLabel != null && onAction != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Sizes.gutter,
+                0,
+                Sizes.gutter,
+                Sizes.gutter,
+              ),
+              child: _ActionRow(
+                icon: Icons.open_in_new_rounded,
+                label: actionLabel!,
+                onTap: onAction!,
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 
@@ -235,10 +328,16 @@ class _ActionRow extends StatelessWidget {
           children: [
             Icon(icon, size: Sizes.icon, color: context.colors.work),
             const SizedBox(width: Sizes.gap),
+            // Shrinks rather than wraps. There is about 164dp of room here
+            // on a 320dp phone: enough for "Turn them on" at the normal type
+            // size, and not enough once the owner turns their system font up.
             Expanded(
-              child: Text(
-                label,
+              child: DefaultTextStyle.merge(
                 style: Theme.of(context).textTheme.titleMedium,
+                child: ActionLabel(
+                  label,
+                  alignment: AlignmentDirectional.centerStart,
+                ),
               ),
             ),
             Icon(

@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:talking_stopwatch/app/style.dart';
+import 'package:talking_stopwatch/app/widgets/tick_ring.dart';
 import 'package:talking_stopwatch/app/providers.dart';
 import 'package:talking_stopwatch/core/audio/cue_player.dart';
 import 'package:talking_stopwatch/core/clock/clock.dart';
@@ -97,6 +99,35 @@ void main() {
     );
   }
 
+  /// The same job as [expectOneLine] where the screen has no short label in
+  /// the same style to measure against: a paragraph knows the height of one of
+  /// its own lines, so ask it rather than guess a threshold.
+  void expectSingleLine(WidgetTester tester, String label) {
+    final paragraph = tester.renderObject<RenderParagraph>(find.text(label));
+    expect(
+      paragraph.size.height,
+      lessThan(paragraph.preferredLineHeight * 2),
+      reason: '"$label" wrapped onto a second line',
+    );
+  }
+
+  /// A platform with nothing working: no voice and no notifications, so every
+  /// notice in the app is up at once and the screens under them are at their
+  /// most crowded.
+  void withNothingWorking() {
+    container.dispose();
+    container = ProviderContainer(
+      overrides: [
+        cuePlayerProvider.overrideWithValue(
+          FakeCuePlayer(hasVoice: false)..notifyAllowed = false,
+        ),
+        clockProvider.overrideWithValue(FakeClock()),
+        storeProvider.overrideWithValue(Store(File('${dir.path}/data.json'))),
+        initialDataProvider.overrideWithValue(AppData(presets: [workout])),
+      ],
+    );
+  }
+
   const sizes = {'small': Size(320, 640), 'ordinary': Size(360, 800)};
 
   for (final entry in sizes.entries) {
@@ -112,6 +143,31 @@ void main() {
         await pumpAt(tester, const RunScreen(), size: size);
         expect(tester.takeException(), isNull);
         expectOneLine(tester, 'Start', shortEnoughToNeverWrap: 'Edit');
+      });
+
+      testWidgets('a workout waiting to start fits with both notices up', (
+        tester,
+      ) async {
+        // The tightest this screen ever gets: the dial is the only thing that
+        // can give way, and it has to give way rather than Start.
+        withNothingWorking();
+        await pumpAt(tester, const RunScreen(), size: size);
+        // The platform answers both questions a frame later.
+        await tester.pump();
+
+        expect(
+          find.textContaining('Notifications are off'),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+        expectOneLine(tester, 'Start', shortEnoughToNeverWrap: 'Edit');
+
+        // The ring is what gives way, and on a 320dp phone with both notices
+        // showing it has given way to almost nothing — which is the screen
+        // behaving as intended, and also why this test exists. There are a
+        // dozen logical pixels in hand here, so a longer notice fails on the
+        // line above rather than in a screenshot.
+        expect(tester.getSize(find.byType(TickRing)).height, greaterThan(0));
       });
 
       testWidgets('a workout in progress fits', (tester) async {
@@ -194,6 +250,25 @@ void main() {
         await tester.drag(find.byType(ListView), const Offset(0, -400));
         await tester.pump();
         expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('settings fit with both notices up', (tester) async {
+        // The worst case for this screen: no voice and no notifications, so
+        // both notices are up and the longest prose in the app is above the
+        // fold. The notification one carries an action row of a fixed height,
+        // which is the only thing here that cannot grow to fit its label —
+        // and a label that wraps inside it does not overflow, so nothing
+        // would throw.
+        withNothingWorking();
+
+        await pumpAt(tester, const SettingsScreen(), size: size);
+        // The platform answers both questions a frame later.
+        await tester.pump();
+
+        expect(find.text('Notifications are off'), findsOneWidget);
+        expect(find.text('This phone has no voice installed'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        expectSingleLine(tester, 'Turn them on');
       });
     });
   }

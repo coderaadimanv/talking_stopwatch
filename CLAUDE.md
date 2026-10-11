@@ -244,7 +244,15 @@ Two more differences worth knowing:
 
 - Android's lock-screen controls are the service's notification. iOS's are
   `MPNowPlayingInfoCenter` and `MPRemoteCommandCenter` — the system's own
-  playback controls. `askToNotify` is an Android-only no-op.
+  playback controls. `askToNotify`, `canNotify` and `openNotifySettings` are
+  Android-only; on iOS all three answer nothing, and `canNotify` answering
+  null is what keeps settings from offering to fix a permission that does not
+  exist there. On Android a refusal is not an error — the workout runs and
+  talks exactly the same, and the only thing lost is the lock screen — so it
+  is never reported as one. It is a notice at the top of settings, beside the
+  one about a phone with no voice, and that notice is the whole reason
+  `canNotify` exists: Android spends its one notification prompt on the first
+  refusal, and after that the degradation is silent.
 - Android ducks the user's music per cue. **iOS does not**: `.mixWithOthers`,
   so cues play over music at full volume. Ducking on iOS lasts as long as the
   session is active and the session is active for the whole workout, so

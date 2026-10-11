@@ -408,13 +408,18 @@ ButtonStyle chipIconButton() => ButtonStyle(
 /// So the label is told never to wrap, and scaled down on the rare screen too
 /// narrow to hold it. Nothing changes at ordinary sizes.
 class ActionLabel extends StatelessWidget {
-  const ActionLabel(this.text, {super.key});
+  const ActionLabel(this.text, {super.key, this.alignment = Alignment.center});
 
   final String text;
+
+  /// Where the label sits when it is given more room than it needs. Centre
+  /// suits a button; a row of label and chevron wants it at the start.
+  final AlignmentGeometry alignment;
 
   @override
   Widget build(BuildContext context) => FittedBox(
     fit: BoxFit.scaleDown,
+    alignment: alignment,
     child: Text(text, maxLines: 1, softWrap: false),
   );
 }
