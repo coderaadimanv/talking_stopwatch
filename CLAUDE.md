@@ -222,6 +222,45 @@ A badge on a dark screen is filled with `Brand.accentWash` — the accent turned
 right down — not with ivory. A pale disc on a dark page is a hole punched in
 it.
 
+## The two platforms stay alive in completely different ways
+
+The contract is identical and the implementations have almost nothing in
+common. This is the part to understand before changing either.
+
+**Android** keeps the process alive with a foreground service and a partial
+wake lock, and fires cues with `Handler.postAtTime` against
+`SystemClock.uptimeMillis` — a clock that stops in deep sleep, which is what
+the wake lock is for.
+
+**iOS** has no equivalent. An app stays alive in the background because it is
+*playing audio*, so the session genuinely is: a silence buffer loops on its own
+node for the whole workout and the cues are mixed over it. That is a continuous
+stream rather than a trick, which matters both for staying alive and for being
+honest about why the app asks for the audio background mode. Cues are scheduled
+on the **audio clock by sample**, which is more accurate than Android's, for
+free.
+
+Two more differences worth knowing:
+
+- Android's lock-screen controls are the service's notification. iOS's are
+  `MPNowPlayingInfoCenter` and `MPRemoteCommandCenter` — the system's own
+  playback controls. `askToNotify` is an Android-only no-op.
+- Android ducks the user's music per cue. **iOS does not**: `.mixWithOthers`,
+  so cues play over music at full volume. Ducking on iOS lasts as long as the
+  session is active and the session is active for the whole workout, so
+  ducking there would mean twenty minutes of quiet music rather than a word of
+  it. Revisit if it grates.
+
+`keepScreenOnByDefault` is true on iOS and only iOS, and that is a hedge rather
+than a preference — see the comment on it in `core/store/store.dart`.
+
+**New Swift files must be added to the Xcode target** or they are silently not
+compiled. There is no `xcodeproj` gem on the system ruby; CocoaPods ships one:
+
+```bash
+GEM_HOME=/opt/homebrew/Cellar/cocoapods/1.17.0/libexec ruby -e "require 'xcodeproj'; ..."
+```
+
 ## The stopwatch is the exception to "nothing ticks"
 
 A workout has an end, so its whole script goes down in one call and the app can
