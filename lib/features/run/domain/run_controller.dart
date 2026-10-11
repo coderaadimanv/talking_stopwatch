@@ -69,22 +69,70 @@ class RunController extends Notifier<RunState> {
       clock: ref.read(clockProvider),
     );
 
-    // Stop, from the notification on the lock screen.
-    final stopped = ref
-        .read(cuePlayerProvider)
-        .stopped
-        .listen((_) => stop());
+    final player = ref.read(cuePlayerProvider);
+
+    // Stop and Pause, from the notification on the lock screen.
+    final stopped = player.stopped.listen((_) => stop());
+    final paused = player.pauseChanged.listen(followPlatformPause);
 
     ref.onDispose(() {
       _ticker?.cancel();
       stopped.cancel();
+      paused.cancel();
     });
+
+    // A workout may already be running, started by a screen that no longer
+    // exists. Find out before drawing anything.
+    unawaited(restore());
 
     return RunState(session: _session.state);
   }
 
   Workout get _workout => ref.read(workoutProvider);
   String get _title => _workout.name.isEmpty ? 'Workout' : _workout.name;
+
+  /// Takes over a workout the platform is already running.
+  ///
+  /// The foreground service outlives the UI, so the cues can still be playing
+  /// long after the screen that started them was destroyed. Without this the
+  /// app comes back saying "Start" over a workout that is plainly still
+  /// counting, and starting again would cancel it and begin from the top.
+  Future<void> restore() async {
+    final data = ref.read(appDataProvider);
+    final id = data.runningWorkoutId;
+    if (id == null) return;
+
+    final player = ref.read(cuePlayerProvider);
+    final elapsed = await player.elapsedMs();
+    if (elapsed == null) {
+      // The process died with the session. Nothing to come back to.
+      ref.read(appDataProvider.notifier).setRunning(null);
+      return;
+    }
+
+    final workout = data.presets.where((w) => w.id == id).firstOrNull;
+    if (workout == null) return;
+
+    ref.read(selectedWorkoutIdProvider.notifier).select(id);
+    _session.load(workout, offsetMs: data.settings.offsetMs);
+    _session.adopt(elapsedMs: elapsed, paused: await player.isPaused());
+
+    if (_session.state.status == SessionStatus.running) _beginTicking();
+    _refresh();
+  }
+
+  /// The notification's Pause button, which reaches the platform directly and
+  /// tells us afterwards.
+  void followPlatformPause(bool paused) {
+    if (paused) {
+      _session.holdForPlatform();
+      _stopTicking();
+    } else {
+      _session.releaseForPlatform();
+      _beginTicking();
+    }
+    _refresh();
+  }
 
   Future<void> start() async {
     final data = ref.read(appDataProvider);
@@ -103,6 +151,7 @@ class RunController extends Notifier<RunState> {
     } finally {
       state = state.copyWith(preparing: false);
     }
+    ref.read(appDataProvider.notifier).setRunning(_workout.id);
     _beginTicking();
   }
 
@@ -126,6 +175,7 @@ class RunController extends Notifier<RunState> {
     await _session.stop();
     _stopTicking();
     _described = '';
+    ref.read(appDataProvider.notifier).setRunning(null);
     await ref.read(cuePlayerProvider).keepAwake(false);
     _refresh();
   }
@@ -149,20 +199,22 @@ class RunController extends Notifier<RunState> {
     _ticker = null;
   }
 
-  void _tick() {
+  void _tick() => _refresh();
+
+  /// Publishes the session, and clears up after it if it has ended.
+  ///
+  /// One place rather than two: the finish used to be handled only on a tick,
+  /// so a workout that ran out while the app was away stayed written down as
+  /// running.
+  void _refresh() {
     final session = _session.state;
     state = state.copyWith(session: session);
     _describe(session);
     if (session.status == SessionStatus.finished) {
       _stopTicking();
+      ref.read(appDataProvider.notifier).setRunning(null);
       ref.read(cuePlayerProvider).keepAwake(false);
     }
-  }
-
-  void _refresh() {
-    final session = _session.state;
-    state = state.copyWith(session: session);
-    _describe(session);
   }
 
   /// Keeps the notification honest as the phases change, so a glance at the

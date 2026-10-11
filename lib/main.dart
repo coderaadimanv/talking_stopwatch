@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'app/app.dart';
 import 'app/providers.dart';
+import 'core/audio/platform_cue_player.dart';
 import 'core/store/store.dart';
 
 Future<void> main() async {
@@ -18,13 +19,22 @@ Future<void> main() async {
   final store = Store(File('${directory.path}/data.json'));
   final data = await store.load();
 
+  // A workout may still be running, started by a screen that no longer
+  // exists: the foreground service outlives the UI. Ask the platform before
+  // the first frame, so the app opens on the workout rather than flashing the
+  // list and jumping.
+  final player = PlatformCuePlayer();
+  final running =
+      data.runningWorkoutId != null && await player.elapsedMs() != null;
+
   runApp(
     ProviderScope(
       overrides: [
         storeProvider.overrideWithValue(store),
         initialDataProvider.overrideWithValue(data),
+        cuePlayerProvider.overrideWithValue(player),
       ],
-      child: const TalkingStopwatchApp(),
+      child: TalkingStopwatchApp(initialLocation: running ? '/run' : '/'),
     ),
   );
 }

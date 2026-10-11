@@ -1,11 +1,27 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import '../timeline/workout.dart';
 
 /// The version of the file layout. Bumped only when old files need reading
 /// differently; a file from the future is ignored rather than guessed at.
 const storeSchema = 1;
+
+/// Whether a fresh install keeps the screen on during a workout.
+///
+/// True on iOS, and only there. Android keeps the cues coming from a
+/// foreground service holding a wake lock, which is about as certain as the
+/// platform allows. iOS has no equivalent: an app stays alive in the
+/// background because it is playing audio, and how long that lasts has moved
+/// between iOS versions. Until it is proven on the phone it is meant for, the
+/// screen staying on is the fallback that cannot fail — and it is one switch
+/// away in settings once it is proven unnecessary.
+///
+/// A default, not a rule: it is only consulted on a first run, so turning it
+/// off sticks.
+final bool keepScreenOnByDefault = defaultTargetPlatform == TargetPlatform.iOS;
 
 /// Settings that are not part of any one workout.
 class AppSettings {
@@ -57,9 +73,11 @@ class AppData {
   const AppData({
     this.presets = const [],
     this.settings = const AppSettings(),
+    this.runningWorkoutId,
   });
 
   factory AppData.fromJson(Map<String, Object?> json) => AppData(
+    runningWorkoutId: json['running'] as String?,
     presets: [
       for (final p in (json['presets'] as List<Object?>? ?? const []))
         Workout.fromJson(p as Map<String, Object?>),
@@ -81,20 +99,37 @@ class AppData {
         rounds: 8,
       ),
     ],
+    settings: AppSettings(keepScreenOn: keepScreenOnByDefault),
   );
 
   final List<Workout> presets;
   final AppSettings settings;
 
-  AppData copyWith({List<Workout>? presets, AppSettings? settings}) => AppData(
+  /// The workout that was running when the app last wrote this file.
+  ///
+  /// Written down because the UI can die while the workout carries on, and
+  /// the platform deliberately knows nothing about workouts — it holds a list
+  /// of cues and a clock. This is the one thread back from one to the other.
+  final String? runningWorkoutId;
+
+  AppData copyWith({
+    List<Workout>? presets,
+    AppSettings? settings,
+    String? runningWorkoutId,
+    bool clearRunning = false,
+  }) => AppData(
     presets: presets ?? this.presets,
     settings: settings ?? this.settings,
+    runningWorkoutId: clearRunning
+        ? null
+        : runningWorkoutId ?? this.runningWorkoutId,
   );
 
   Map<String, Object?> toJson() => {
     'schema': storeSchema,
     'presets': [for (final p in presets) p.toJson()],
     'settings': settings.toJson(),
+    if (runningWorkoutId != null) 'running': runningWorkoutId,
   };
 }
 
