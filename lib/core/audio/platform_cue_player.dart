@@ -124,6 +124,15 @@ class PlatformCuePlayer implements CuePlayer {
   @override
   Future<void> openNotifySettings() => _invoke<void>('openNotifySettings');
 
+  @override
+  Future<bool?> canSilence() => _invoke<bool>('canSilence');
+
+  @override
+  Future<void> silence(bool on) => _invoke<void>('silence', {'on': on});
+
+  @override
+  Future<void> openSilenceSettings() => _invoke<void>('openSilenceSettings');
+
   Future<T?> _invoke<T>(String method, [Map<String, Object?>? args]) async {
     try {
       return await _channel.invokeMethod<T>(method, args);

@@ -104,6 +104,13 @@ import UIKit
     case "askToNotify", "canNotify", "openNotifySettings":
       result(nil)
 
+    // Also Android only, and this one is not a permission that could be
+    // granted later: no iOS app can turn a Focus on for the user. `canSilence`
+    // answering nil is what keeps the switch off the focus screen here rather
+    // than showing one that would never work.
+    case "canSilence", "silence", "openSilenceSettings":
+      result(nil)
+
     default:
       result(FlutterMethodNotImplemented)
     }

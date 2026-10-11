@@ -79,6 +79,29 @@ abstract class CuePlayer {
   /// where it is actually true.
   Future<bool?> canNotify();
 
+  /// Whether the phone can be silenced for a session: true when the app has
+  /// been allowed to, false when it has not been allowed yet, and **null
+  /// where it is not possible at all** — iOS, where no app can turn a Focus
+  /// on, and any platform the native half does not answer for.
+  ///
+  /// The same three-way answer as [canNotify], for the same reason: false is
+  /// something the user can fix and null is something nobody can, and a
+  /// switch offering the second would be a lie.
+  Future<bool?> canSilence();
+
+  /// Silences the phone for the session, and gives back exactly what was
+  /// there before when it ends.
+  ///
+  /// The platform keeps that promise on its own, because the session outlives
+  /// the UI: the Stop button on the notification can end a session with no
+  /// Dart left alive to call this with false.
+  Future<void> silence(bool on);
+
+  /// Opens the system screen where the app can be allowed to silence the
+  /// phone. Do Not Disturb is a special access, granted there and nowhere
+  /// else — there is no prompt to show.
+  Future<void> openSilenceSettings();
+
   /// Opens the system screen where the session notification can be switched
   /// back on.
   ///
@@ -122,6 +145,11 @@ class FakeCuePlayer implements CuePlayer {
   /// What [canNotify] answers. Null is the iOS answer: not a question here.
   bool? notifyAllowed = true;
   int notifySettingsOpened = 0;
+
+  /// What [canSilence] answers, and every [silence] it was asked for.
+  bool? silenceAllowed = true;
+  final List<bool> silences = [];
+  int silenceSettingsOpened = 0;
 
   /// The most recent schedule, or null if nothing has been armed.
   List<Cue>? get lastSchedule => schedules.isEmpty ? null : schedules.last;
@@ -178,6 +206,15 @@ class FakeCuePlayer implements CuePlayer {
 
   @override
   Future<void> openNotifySettings() async => notifySettingsOpened++;
+
+  @override
+  Future<bool?> canSilence() async => silenceAllowed;
+
+  @override
+  Future<void> silence(bool on) async => silences.add(on);
+
+  @override
+  Future<void> openSilenceSettings() async => silenceSettingsOpened++;
 
   @override
   Stream<void> get stopped => const Stream<void>.empty();

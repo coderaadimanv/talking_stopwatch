@@ -112,11 +112,48 @@ void main() {
       // session and no permission is involved. Null means do not ask.
       reply = null;
       expect(await player.canNotify(), isNull);
+      // Nor may failing to silence the phone take a session down with it.
+      await player.silence(true);
+      await player.openSilenceSettings();
+      expect(await player.canSilence(), isNull);
     });
 
     test('can be sent to the system screen that turns it back on', () async {
       await player.openNotifySettings();
       expect(calls.map((c) => c.method), contains('openNotifySettings'));
+    });
+  });
+
+  group('silencing the phone', () {
+    test('asks the platform whether it can', () async {
+      reply = true;
+      expect(await player.canSilence(), isTrue);
+      reply = false;
+      expect(await player.canSilence(), isFalse);
+    });
+
+    test('is not possible everywhere, and says so', () async {
+      // iOS answers nothing: an app cannot turn on a Focus there at all.
+      // Null is what keeps the switch off that screen.
+      reply = null;
+      expect(await player.canSilence(), isNull);
+    });
+
+    test('turns it on and off by the same method', () async {
+      await player.silence(true);
+      await player.silence(false);
+      expect(
+        calls.where((c) => c.method == 'silence').map((c) => c.arguments),
+        [
+          {'on': true},
+          {'on': false},
+        ],
+      );
+    });
+
+    test('can send the user to the screen that allows it', () async {
+      await player.openSilenceSettings();
+      expect(calls.map((c) => c.method), contains('openSilenceSettings'));
     });
   });
 

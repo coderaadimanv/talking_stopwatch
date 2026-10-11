@@ -128,21 +128,31 @@ void main() {
   /// A platform with nothing working: no voice and no notifications, so every
   /// notice in the app is up at once and the screens under them are at their
   /// most crowded.
-  void withNothingWorking() {
+  /// Rebuilds the container with a different platform or different settings,
+  /// for the screens that only look their worst in one particular state.
+  void useContainer({
+    FakeCuePlayer? player,
+    AppSettings settings = const AppSettings(),
+  }) {
     container.dispose();
     container = ProviderContainer(
       overrides: [
-        cuePlayerProvider.overrideWithValue(
-          FakeCuePlayer(hasVoice: false)..notifyAllowed = false,
-        ),
+        cuePlayerProvider.overrideWithValue(player ?? FakeCuePlayer()),
         clockProvider.overrideWithValue(FakeClock()),
         storeProvider.overrideWithValue(Store(File('${dir.path}/data.json'))),
         initialDataProvider.overrideWithValue(
-          AppData(presets: [workout, focus]),
+          AppData(presets: [workout, focus], settings: settings),
         ),
       ],
     );
   }
+
+  /// A platform with nothing working: no voice and no notifications, so
+  /// every notice in the app is up at once and the screens under them are at
+  /// their most crowded.
+  void withNothingWorking() => useContainer(
+    player: FakeCuePlayer(hasVoice: false)..notifyAllowed = false,
+  );
 
   const sizes = {'small': Size(320, 640), 'ordinary': Size(360, 800)};
 
@@ -165,8 +175,46 @@ void main() {
       testWidgets('a focus session waiting to start fits', (tester) async {
         container.read(selectedWorkoutIdProvider.notifier).select(focus.id);
         await pumpAt(tester, const FocusScreen(), size: size);
+        await tester.pump();
+
         expect(tester.takeException(), isNull);
         expectOneLine(tester, 'Start', shortEnoughToNeverWrap: 'Edit');
+        // Measured against its own line height rather than another label:
+        // this one is titleMedium and "Edit" is a button's own style, so the
+        // two heights were never comparable.
+        expectSingleLine(tester, 'Silence the phone');
+      });
+
+      testWidgets('a focus session that may not silence the phone fits', (
+        tester,
+      ) async {
+        // Asked for but not allowed: the row grows a second line, and it is
+        // the longest sentence this screen ever has to hold.
+        useContainer(
+          player: FakeCuePlayer()..silenceAllowed = false,
+          settings: const AppSettings(silenceDuringFocus: true),
+        );
+        container.read(selectedWorkoutIdProvider.notifier).select(focus.id);
+        await pumpAt(tester, const FocusScreen(), size: size);
+        await tester.pump();
+
+        expect(find.textContaining('Android has to allow'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        expectOneLine(tester, 'Start', shortEnoughToNeverWrap: 'Edit');
+      });
+
+      testWidgets('nothing offers to silence a phone that cannot', (
+        tester,
+      ) async {
+        // iOS: no app can turn a Focus on, so there is no switch to turn on.
+        // Null is not false.
+        useContainer(player: FakeCuePlayer()..silenceAllowed = null);
+        container.read(selectedWorkoutIdProvider.notifier).select(focus.id);
+        await pumpAt(tester, const FocusScreen(), size: size);
+        await tester.pump();
+
+        expect(find.text('Silence the phone'), findsNothing);
+        expect(tester.takeException(), isNull);
       });
 
       testWidgets('a focus session in progress fits', (tester) async {
