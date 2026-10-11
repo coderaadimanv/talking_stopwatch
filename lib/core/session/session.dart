@@ -34,6 +34,14 @@ class SessionState {
 
   bool get isActive =>
       status == SessionStatus.running || status == SessionStatus.paused;
+
+  /// The phase the screen should colour itself after, or null when no session
+  /// is under way.
+  ///
+  /// Not the same as [segment]: a loaded-but-idle session still has a phase
+  /// sitting at time zero, and painting the setup screen in that phase's
+  /// colour says a workout is running when none is.
+  Segment? get activeSegment => isActive ? segment : null;
 }
 
 /// Runs one workout.
@@ -96,10 +104,13 @@ class Session {
 
   Future<void> start() async {
     if (_timeline.isEmpty) return;
+    // Warm first, and only then start the clock. Rendering the phrases can
+    // take seconds on a first run, and anchoring before it would leave the
+    // session believing it was already that far in.
+    await player.warm(_cues);
     _elapsedAtAnchor = 0;
     _anchorMs = clock.nowMs;
     _status = SessionStatus.running;
-    await player.warm(_cues);
     await player.schedule(_cues, leadMs: _leadMs);
   }
 
@@ -155,5 +166,9 @@ class Session {
     leadMs: _leadMs,
   );
 
-  static const _leadMs = 250;
+  /// Zero on purpose. The platform pins cue time zero this far in the future,
+  /// while this class pins it to the moment of the call, so anything but zero
+  /// is the display and the voice disagreeing by exactly that much. If a head
+  /// start is ever wanted, it has to be compensated for here too.
+  static const _leadMs = 0;
 }

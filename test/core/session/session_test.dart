@@ -152,4 +152,37 @@ void main() {
     expect(session.state.status, SessionStatus.idle);
     expect(player.schedules, isEmpty);
   });
+
+  group('activeSegment', () {
+    test('is nothing before the session starts, though a phase sits at zero', () {
+      expect(session.state.segment, isNotNull, reason: 'prepare is at zero');
+      expect(
+        session.state.activeSegment,
+        isNull,
+        reason: 'an idle screen must not wear a running phase colour',
+      );
+    });
+
+    test('is the running phase once started, and while paused', () async {
+      await session.start();
+      clock.advance(12000);
+      expect(session.state.activeSegment!.kind, SegmentKind.work);
+
+      await session.pause();
+      expect(session.state.activeSegment!.kind, SegmentKind.work);
+    });
+
+    test('is nothing again after stopping', () async {
+      await session.start();
+      clock.advance(12000);
+      await session.stop();
+      expect(session.state.activeSegment, isNull);
+    });
+
+    test('is nothing once the session has finished', () async {
+      await session.start();
+      clock.advance(120000);
+      expect(session.state.activeSegment, isNull);
+    });
+  });
 }
