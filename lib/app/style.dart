@@ -519,9 +519,11 @@ ThemeData appTheme() {
     ),
 
     switchTheme: SwitchThemeData(
+      // Ivory on, taupe off. An ink thumb on a terracotta track reads as a
+      // hole punched in the switch rather than as the part that moves.
       thumbColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected)
-            ? Brand.ink
+            ? Brand.ivory
             : Brand.taupe,
       ),
       trackColor: WidgetStateProperty.resolveWith(

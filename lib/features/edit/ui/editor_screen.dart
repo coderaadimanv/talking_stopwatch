@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/style.dart';
 import '../../../app/providers.dart';
+import '../../../app/style.dart';
+import '../../../app/widgets/circle_badge.dart';
 import '../../../app/widgets/number_row.dart';
+import '../../../app/widgets/section.dart';
+import '../../../app/widgets/soft_background.dart';
 import '../../../core/timeline/summary.dart';
 import '../../../core/timeline/workout.dart';
 
@@ -28,15 +31,22 @@ class EditorScreen extends ConsumerWidget {
     }
 
     final data = ref.read(appDataProvider.notifier);
+    final colors = context.colors;
     void edit(Workout Function(Workout) change) => data.editWorkout(id, change);
 
     return Scaffold(
+      backgroundColor: Brand.ink,
       appBar: AppBar(
-        leading: IconButton(
-          onPressed: () => context.go('/'),
-          icon: const Icon(Icons.arrow_back),
+        leadingWidth: Sizes.bigControl,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: Sizes.gap),
+          child: IconButton(
+            onPressed: () => context.go('/'),
+            style: chipIconButton(),
+            icon: const Icon(Icons.arrow_back),
+          ),
         ),
-        title: Text(workout.totalLabel),
+        title: const Text('Edit'),
         actions: [
           IconButton(
             tooltip: 'Duplicate',
@@ -55,120 +65,188 @@ class EditorScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(Sizes.gutter),
-        children: [
-          TextFormField(
-            key: ValueKey('name-$id'),
-            initialValue: workout.name,
-            decoration: const InputDecoration(labelText: 'Name'),
-            textCapitalization: TextCapitalization.sentences,
-            onChanged: (value) => edit((w) => w.copyWith(name: value)),
-          ),
-          const SizedBox(height: Sizes.gap),
-
-          NumberRow(
-            label: 'Get ready',
-            value: '${workout.prepareSeconds}s',
-            onChange: (by) => edit(
-              (w) => w.copyWith(
-                prepareSeconds: (w.prepareSeconds + by * 5).clamp(0, 120),
-              ),
+      body: SoftBackground(
+        color: Brand.ink,
+        glow: colors.work,
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              Sizes.gutter,
+              Sizes.gap,
+              Sizes.gutter,
+              Sizes.bigGap,
             ),
-          ),
+            children: [
+              // The name, beside the one number that changes as you edit.
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(Sizes.gutter),
+                  child: Row(
+                    children: [
+                      CircleBadge(
+                        size: Sizes.badgeSmall,
+                        background: Brand.accentWash,
+                        child: Text(
+                          workout.totalLabel,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(color: colors.work),
+                        ),
+                      ),
+                      const SizedBox(width: Sizes.gap),
+                      Expanded(
+                        child: TextFormField(
+                          key: ValueKey('name-$id'),
+                          initialValue: workout.name,
+                          decoration: const InputDecoration(
+                            labelText: 'Name',
+                          ),
+                          textCapitalization: TextCapitalization.sentences,
+                          onChanged: (value) =>
+                              edit((w) => w.copyWith(name: value)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
-          const _Heading('Rounds'),
-          for (var i = 0; i < workout.rounds.length; i++)
-            _RoundCard(
-              key: ValueKey('round-$id-$i'),
-              index: i,
-              round: workout.rounds[i],
-              // One round is the shape of a plain interval; removing the last
-              // one would leave a workout with nothing in it.
-              onRemove: workout.rounds.length <= 1
-                  ? null
-                  : () => edit(
+              Section(
+                icon: Icons.hourglass_top_rounded,
+                title: 'Warm up',
+                subtitle: workout.prepareSeconds == 0
+                    ? 'Straight in'
+                    : '${workout.prepareSeconds}s before the first round',
+                children: [
+                  NumberRow(
+                    label: 'Get ready',
+                    value: '${workout.prepareSeconds}s',
+                    onChange: (by) => edit(
                       (w) => w.copyWith(
-                        rounds: [...w.rounds]..removeAt(i),
+                        prepareSeconds: (w.prepareSeconds + by * 5).clamp(
+                          0,
+                          120,
+                        ),
                       ),
                     ),
-              onChange: (round) => edit(
-                (w) => w.copyWith(rounds: [...w.rounds]..[i] = round),
+                  ),
+                ],
               ),
-            ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => edit(
-                (w) => w.copyWith(
-                  rounds: [
-                    ...w.rounds,
-                    const Round(workSeconds: 30, restSeconds: 10),
-                  ],
+
+              // A card each rather than one long box: a round is a thing, and
+              // five of them in one card read as one thing with fifteen rows.
+              SectionHeading(
+                icon: Icons.fitness_center_rounded,
+                title: 'Exercises',
+                subtitle: workout.rounds.length == 1
+                    ? 'One exercise, repeated'
+                    : '${workout.rounds.length} exercises in a circuit',
+              ),
+              for (var i = 0; i < workout.rounds.length; i++) ...[
+                _RoundCard(
+                  key: ValueKey('round-$id-$i'),
+                  index: i,
+                  round: workout.rounds[i],
+                  // One round is the shape of a plain interval; removing the
+                  // last would leave a workout with nothing in it.
+                  onRemove: workout.rounds.length <= 1
+                      ? null
+                      : () => edit(
+                          (w) =>
+                              w.copyWith(rounds: [...w.rounds]..removeAt(i)),
+                        ),
+                  onChange: (round) => edit(
+                    (w) => w.copyWith(rounds: [...w.rounds]..[i] = round),
+                  ),
+                ),
+                const SizedBox(height: Sizes.gap),
+              ],
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => edit(
+                    (w) => w.copyWith(
+                      rounds: [
+                        ...w.rounds,
+                        const Round(workSeconds: 30, restSeconds: 10),
+                      ],
+                    ),
+                  ),
+                  icon: const Icon(Icons.add),
+                  label: const ActionLabel('Add an exercise'),
                 ),
               ),
-              icon: const Icon(Icons.add),
-              label: const Text('Add an exercise'),
-            ),
-          ),
 
-          const _Heading('Repeat'),
-          NumberRow(
-            label: workout.rounds.length > 1 ? 'Sets' : 'Rounds',
-            value: '${workout.repeats}',
-            onChange: (by) =>
-                edit((w) => w.copyWith(repeats: (w.repeats + by).clamp(1, 60))),
-          ),
-          // Only for a circuit: with one exercise, every repeat is a round
-          // and Rest already is the pause between them.
-          if (workout.repeats > 1 && workout.rounds.length > 1)
-            NumberRow(
-              label: 'Break between sets',
-              value: '${workout.breakSeconds}s',
-              onChange: (by) => edit(
-                (w) => w.copyWith(
-                  breakSeconds: (w.breakSeconds + by * 15).clamp(0, 600),
-                ),
+              Section(
+                icon: Icons.repeat_rounded,
+                title: 'Repeat',
+                subtitle: workout.summary,
+                children: [
+                  NumberRow(
+                    label: workout.rounds.length > 1 ? 'Sets' : 'Rounds',
+                    value: '${workout.repeats}',
+                    onChange: (by) => edit(
+                      (w) => w.copyWith(repeats: (w.repeats + by).clamp(1, 60)),
+                    ),
+                  ),
+                  // Only for a circuit: with one exercise, every repeat is a
+                  // round and Rest already is the pause between them.
+                  if (workout.repeats > 1 && workout.rounds.length > 1)
+                    NumberRow(
+                      label: 'Break between sets',
+                      value: '${workout.breakSeconds}s',
+                      onChange: (by) => edit(
+                        (w) => w.copyWith(
+                          breakSeconds: (w.breakSeconds + by * 15).clamp(
+                            0,
+                            600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  NumberRow(
+                    label: 'Cool down',
+                    value: '${workout.cooldownSeconds}s',
+                    onChange: (by) => edit(
+                      (w) => w.copyWith(
+                        cooldownSeconds: (w.cooldownSeconds + by * 15).clamp(
+                          0,
+                          600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          NumberRow(
-            label: 'Cool down',
-            value: '${workout.cooldownSeconds}s',
-            onChange: (by) => edit(
-              (w) => w.copyWith(
-                cooldownSeconds: (w.cooldownSeconds + by * 15).clamp(0, 600),
-              ),
-            ),
-          ),
 
-          const _Heading('What it says'),
-          _CueSettings(
-            cues: workout.cues,
-            onChange: (cues) => edit((w) => w.copyWith(cues: cues)),
+              Section(
+                icon: Icons.record_voice_over_rounded,
+                title: 'What it says',
+                subtitle: _spoken(workout.cues),
+                children: [
+                  _CueSettings(
+                    cues: workout.cues,
+                    onChange: (cues) => edit((w) => w.copyWith(cues: cues)),
+                  ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: Sizes.bigGap),
-        ],
+        ),
       ),
     );
   }
-}
 
-class _Heading extends StatelessWidget {
-  const _Heading(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: Sizes.bigGap, bottom: Sizes.gap),
-    child: Text(
-      text.toUpperCase(),
-      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-        color: context.colors.muted,
-        letterSpacing: 1.5,
-      ),
-    ),
-  );
+  /// The heading says what it will actually say, so the switches below do not
+  /// have to be read to find out.
+  String _spoken(CueSettings cues) {
+    final on = [
+      if (cues.phaseWords) 'phases',
+      if (cues.countdown) 'countdown',
+      if (cues.roundLabels) 'rounds',
+      if (cues.halfway) 'halfway',
+    ];
+    return on.isEmpty ? 'Silent' : on.join(', ');
+  }
 }
 
 class _RoundCard extends StatelessWidget {
@@ -187,20 +265,30 @@ class _RoundCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-    margin: const EdgeInsets.only(bottom: Sizes.gap),
     child: Padding(
       padding: const EdgeInsets.all(Sizes.gutter),
       child: Column(
         children: [
           Row(
             children: [
+              CircleBadge(
+                size: Sizes.badgeTiny,
+                background: Brand.accentWash,
+                child: Text(
+                  '${index + 1}',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: context.colors.work,
+                  ),
+                ),
+              ),
+              const SizedBox(width: Sizes.gap),
               Expanded(
                 child: TextFormField(
                   initialValue: round.label,
                   decoration: InputDecoration(
                     labelText: 'Exercise',
                     // The label is spoken, so say what it will sound like.
-                    hintText: 'spoken as "go, round ${index + 1}" if empty',
+                    hintText: 'spoken as "round ${index + 1}" if empty',
                   ),
                   onChanged: (value) => onChange(round.copyWith(label: value)),
                 ),
@@ -245,16 +333,16 @@ class _CueSettings extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
     children: [
-      SwitchListTile(
-        title: const Text('Name each phase'),
-        subtitle: const Text('"go", "rest"'),
+      _Switch(
+        title: 'Name each phase',
+        subtitle: '"go", "rest"',
         value: cues.phaseWords,
         onChanged: (v) => onChange(cues.copyWith(phaseWords: v)),
       ),
-      SwitchListTile(
-        title: const Text('Count down to the change'),
-        subtitle: Text('"${cues.countdownFrom == 5 ? 'five, four, ' : ''}'
-            'three, two, one"'),
+      _Switch(
+        title: 'Count down to the change',
+        subtitle:
+            '"${cues.countdownFrom == 5 ? 'five, four, ' : ''}three, two, one"',
         value: cues.countdown,
         onChanged: (v) => onChange(cues.copyWith(countdown: v)),
       ),
@@ -268,23 +356,47 @@ class _CueSettings extends StatelessWidget {
             ),
           ),
         ),
-      SwitchListTile(
-        title: const Text('Say the round'),
-        subtitle: const Text('"go, round 3" — or the exercise\'s name'),
+      _Switch(
+        title: 'Say the round',
+        subtitle: '"go, round 3" — or the exercise\'s name',
         value: cues.roundLabels,
         onChanged: (v) => onChange(cues.copyWith(roundLabels: v)),
       ),
-      SwitchListTile(
-        title: const Text('Warn on the last round'),
+      _Switch(
+        title: 'Warn on the last round',
+        subtitle: '"go, last round"',
         value: cues.lastRound,
         onChanged: (v) => onChange(cues.copyWith(lastRound: v)),
       ),
-      SwitchListTile(
-        title: const Text('Say "halfway"'),
-        subtitle: const Text('On work phases of 20s or more'),
+      _Switch(
+        title: 'Say "halfway"',
+        subtitle: 'On work phases of 20s or more',
         value: cues.halfway,
         onChanged: (v) => onChange(cues.copyWith(halfway: v)),
       ),
     ],
+  );
+}
+
+class _Switch extends StatelessWidget {
+  const _Switch({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) => SwitchListTile(
+    contentPadding: EdgeInsets.zero,
+    title: Text(title),
+    subtitle: Text(subtitle),
+    value: value,
+    onChanged: onChanged,
   );
 }

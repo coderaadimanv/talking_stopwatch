@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/style.dart';
-import '../../../app/widgets/circle_badge.dart';
+import '../../../app/widgets/section.dart';
 import '../../../app/widgets/soft_background.dart';
 import '../../../core/cues/cue.dart';
 
@@ -63,7 +63,7 @@ class SettingsScreen extends ConsumerWidget {
                 const SizedBox(height: Sizes.gap),
               ],
 
-              _Section(
+              Section(
                 icon: Icons.timer_outlined,
                 title: 'Stopwatch',
                 subtitle: 'Call out the time',
@@ -95,7 +95,7 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
 
-              _Section(
+              Section(
                 icon: Icons.graphic_eq_rounded,
                 title: 'Timing',
                 subtitle: 'Audio delay',
@@ -146,7 +146,7 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
 
-              _Section(
+              Section(
                 icon: Icons.light_mode_outlined,
                 title: 'Screen',
                 subtitle: 'Keep the screen on',
@@ -179,72 +179,6 @@ class SettingsScreen extends ConsumerWidget {
     await player.describe('Talking Stopwatch', 'Testing the voice');
     await player.warm(const [cue]);
     await player.schedule(const [cue], countUp: true);
-  }
-}
-
-/// A heading: what the section is, and what it does, with its own badge.
-class _Section extends StatelessWidget {
-  const _Section({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.children,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(
-            top: Sizes.bigGap,
-            bottom: Sizes.gap,
-            left: Sizes.gap / 2,
-          ),
-          child: Row(
-            children: [
-              CircleBadge(
-                size: Sizes.badgeTiny,
-                // The accent turned right down, not ivory: on a dark screen a
-                // pale disc is a hole punched in the page.
-                background: Brand.accentWash,
-                child: Icon(
-                  icon,
-                  color: context.colors.work,
-                  size: Sizes.iconSmall,
-                ),
-              ),
-              const SizedBox(width: Sizes.gap),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: text.titleLarge),
-                    Text(subtitle, style: text.bodyMedium),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(Sizes.gutter),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: children,
-            ),
-          ),
-        ),
-      ],
-    );
   }
 }
 
