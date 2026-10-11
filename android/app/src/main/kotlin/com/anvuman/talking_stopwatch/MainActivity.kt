@@ -26,6 +26,9 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         CueEngine.attach(applicationContext)
+        // A session that died without tidying up may have left the phone
+        // silent. Put it back before anything else happens.
+        TimerService.restoreIfStranded(applicationContext)
 
         val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
         this.channel = channel
@@ -131,6 +134,22 @@ class MainActivity : FlutterActivity() {
                 result.success(null)
             }
 
+            "canSilence" -> result.success(TimerService.canSilence(this))
+
+            "silence" -> {
+                TimerService.silence(this, call.argument<Boolean>("on") ?: false)
+                result.success(null)
+            }
+
+            // There is no prompt for this one. Do Not Disturb access is
+            // granted on a system screen and nowhere else.
+            "openSilenceSettings" -> {
+                openSettings(
+                    Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS),
+                )
+                result.success(null)
+            }
+
             else -> result.notImplemented()
         }
     }
@@ -146,9 +165,22 @@ class MainActivity : FlutterActivity() {
      * that is missing the first.
      */
     private fun openNotifySettings() {
-        val routes = listOf(
+        openSettings(
             Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                 .putExtra(Settings.EXTRA_APP_PACKAGE, packageName),
+        )
+    }
+
+    /**
+     * Opens a system screen, falling back to this app's details page.
+     *
+     * Every one of these actions is optional for a device to implement, and a
+     * missing one throws rather than doing nothing. The details page exists
+     * everywhere and has what is being asked for somewhere inside it.
+     */
+    private fun openSettings(intent: Intent) {
+        val routes = listOf(
+            intent,
             Intent(
                 Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                 Uri.fromParts("package", packageName, null),

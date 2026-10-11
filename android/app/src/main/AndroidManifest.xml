@@ -11,6 +11,12 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+    <!-- Silences the phone for a focus session. Declaring it is not enough:
+         Do Not Disturb is a special access the user grants on a system screen,
+         and the app checks before it tries. Whatever filter was in place is
+         written down and put back when the session ends. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY"/>
+
     <application
         android:label="Talking Stopwatch"
         android:name="${applicationName}"

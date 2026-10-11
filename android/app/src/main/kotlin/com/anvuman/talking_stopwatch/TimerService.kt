@@ -77,6 +77,10 @@ class TimerService : Service() {
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
         instance = null
+        // Whatever this session borrowed, it gives back here — the same
+        // lifecycle as the wake lock, and for the same reason: this is the
+        // one place that runs however the session ended.
+        silence(this, false)
         super.onDestroy()
     }
 
@@ -256,6 +260,74 @@ class TimerService : Service() {
 
         /** The running service, so the engine can talk to it directly. */
         private var instance: TimerService? = null
+
+        // --- Do Not Disturb -------------------------------------------
+        //
+        // Borrowed for the length of a session. What was in place before is
+        // written down rather than assumed: someone who already had a filter
+        // on would not thank us for handing back "everything through".
+        //
+        // It goes to disk as well, and with commit() rather than apply(),
+        // because onDestroy is where it is normally given back and onDestroy
+        // does not run when the process is force-stopped or killed. A phone
+        // left silent for a week because a timer died is the worst thing this
+        // could do, so [restoreIfStranded] checks on the next start.
+
+        private const val PREFS = "session"
+        private const val KEY_FILTER = "filterBefore"
+
+        /** Whether the app has been allowed to silence the phone at all. */
+        fun canSilence(context: Context): Boolean =
+            context.getSystemService(NotificationManager::class.java)
+                ?.isNotificationPolicyAccessGranted == true
+
+        fun silence(context: Context, on: Boolean) {
+            val manager =
+                context.getSystemService(NotificationManager::class.java) ?: return
+            if (!manager.isNotificationPolicyAccessGranted) return
+
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val held = prefs.contains(KEY_FILTER)
+
+            if (on) {
+                // Already borrowed: borrowing twice would write down the
+                // quiet we ourselves imposed and give that back later.
+                if (held) return
+                val before = manager.currentInterruptionFilter
+                prefs.edit().putInt(
+                    KEY_FILTER,
+                    // Unknown happens on some builds; "everything through" is
+                    // the safe thing to go back to.
+                    if (before == NotificationManager.INTERRUPTION_FILTER_UNKNOWN) {
+                        NotificationManager.INTERRUPTION_FILTER_ALL
+                    } else {
+                        before
+                    },
+                ).commit()
+                // Priority, not None: an alarm should still get through to
+                // someone who fell asleep over their work.
+                manager.setInterruptionFilter(
+                    NotificationManager.INTERRUPTION_FILTER_PRIORITY,
+                )
+            } else {
+                if (!held) return
+                val before = prefs.getInt(
+                    KEY_FILTER,
+                    NotificationManager.INTERRUPTION_FILTER_ALL,
+                )
+                prefs.edit().remove(KEY_FILTER).commit()
+                manager.setInterruptionFilter(before)
+            }
+        }
+
+        /**
+         * Gives the phone its ringer back after a session that died without
+         * running [onDestroy]. Called when the app starts, and only when no
+         * session is running — a live one is still entitled to the quiet.
+         */
+        fun restoreIfStranded(context: Context) {
+            if (instance == null) silence(context, false)
+        }
 
         fun start(context: Context, title: String, text: String, endsAtUptime: Long) {
             val running = instance

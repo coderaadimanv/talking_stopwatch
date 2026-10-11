@@ -130,6 +130,15 @@ void main() {
     );
   });
 
+  test('the silence setting survives a round trip, and defaults off', () async {
+    expect((await store.load()).settings.silenceDuringFocus, isFalse);
+
+    await store.save(
+      const AppData(settings: AppSettings(silenceDuringFocus: true)),
+    );
+    expect((await store.load()).settings.silenceDuringFocus, isTrue);
+  });
+
   test('saving leaves no temporary file behind', () async {
     await store.save(const AppData());
     final left = dir.listSync().map((f) => f.uri.pathSegments.last).toList();

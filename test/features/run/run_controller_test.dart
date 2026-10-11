@@ -6,6 +6,7 @@ import 'package:talking_stopwatch/app/providers.dart';
 import 'package:talking_stopwatch/core/audio/cue_player.dart';
 import 'package:talking_stopwatch/core/clock/clock.dart';
 import 'package:talking_stopwatch/core/session/session.dart';
+import 'package:talking_stopwatch/core/timeline/timeline.dart';
 import 'package:talking_stopwatch/core/store/store.dart';
 import 'package:talking_stopwatch/core/timeline/workout.dart';
 import 'package:talking_stopwatch/features/run/domain/run_controller.dart';
@@ -25,6 +26,16 @@ void main() {
     rounds: 3,
   );
 
+  // Two blocks of 5 minutes with a 1 minute break, so a focus session is
+  // short enough to reason about and still shaped like a real one.
+  final focus = Workout.focus(
+    id: 'focus',
+    name: 'Deep work',
+    focusMinutes: 5,
+    breakMinutes: 1,
+    blocks: 2,
+  );
+
   ProviderContainer makeContainer({
     AppSettings settings = const AppSettings(),
     String? running,
@@ -38,7 +49,7 @@ void main() {
         storeProvider.overrideWithValue(Store(File('${dir.path}/data.json'))),
         initialDataProvider.overrideWithValue(
           AppData(
-            presets: [workout],
+            presets: [workout, focus],
             settings: settings,
             runningWorkoutId: running,
           ),
@@ -166,6 +177,93 @@ void main() {
     await controller().resync();
 
     expect(player.descriptions.length, afterStart, reason: 'same phase');
+  });
+
+  group('silencing the phone', () {
+    void selectFocus() =>
+        container.read(selectedWorkoutIdProvider.notifier).select(focus.id);
+
+    test('a focus session silences it when the setting asks', () async {
+      container.dispose();
+      container = makeContainer(
+        settings: const AppSettings(silenceDuringFocus: true),
+      );
+      selectFocus();
+
+      await controller().start();
+      expect(player.silences, [true]);
+
+      await controller().stop();
+      // Given back, and only once it is over.
+      expect(player.silences, [true, false]);
+    });
+
+    test('a workout never silences it, whatever the setting says', () async {
+      container.dispose();
+      container = makeContainer(
+        settings: const AppSettings(silenceDuringFocus: true),
+      );
+
+      await controller().start();
+      expect(player.silences, isEmpty);
+    });
+
+    test('a focus session leaves it alone when the setting is off', () async {
+      selectFocus();
+      await controller().start();
+      expect(player.silences, isEmpty);
+    });
+
+    test('stopping gives it back even if it was never taken', () async {
+      // Unconditional on purpose: the platform only gives back what it wrote
+      // down, and the alternative is remembering in two places.
+      await controller().start();
+      await controller().stop();
+      expect(player.silences, [false]);
+    });
+  });
+
+  group('what the notification says', () {
+    test('a workout counts rounds', () {
+      expect(
+        notificationText(
+          const Segment(
+            kind: SegmentKind.work,
+            startMs: 0,
+            endMs: 1000,
+            index: 2,
+          ),
+          TimerKind.workout,
+        ),
+        'Work · round 2',
+      );
+    });
+
+    test('a focus session counts blocks, in its own words', () {
+      expect(
+        notificationText(
+          const Segment(
+            kind: SegmentKind.work,
+            startMs: 0,
+            endMs: 1000,
+            index: 2,
+          ),
+          TimerKind.focus,
+        ),
+        'Focus · block 2',
+      );
+      expect(
+        notificationText(
+          const Segment(kind: SegmentKind.rest, startMs: 0, endMs: 1000),
+          TimerKind.focus,
+        ),
+        'Break',
+      );
+    });
+
+    test('nothing running says Done', () {
+      expect(notificationText(null, TimerKind.focus), 'Done');
+    });
   });
 
   // The bug this guards: the foreground service outlives the UI, so a workout

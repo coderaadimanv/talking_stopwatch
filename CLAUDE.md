@@ -279,6 +279,20 @@ free.
 
 Two more differences worth knowing:
 
+- Do Not Disturb is Android only, and not because iOS has not been written
+  yet: **no iOS app can turn a Focus on.** `canSilence` answers null there,
+  which is what keeps the switch off the focus screen rather than showing one
+  that could never work. False means "not allowed yet"; null means "not
+  possible". The two are never the same thing.
+- **The phone's quiet is borrowed, and giving it back is the whole feature.**
+  `TimerService` writes down the filter that was in place — with `commit()`,
+  not `apply()` — and restores it in `onDestroy`, on the same lifecycle as the
+  wake lock. `onDestroy` does not run when the process is force-stopped, so
+  `restoreIfStranded()` checks on the next start: a phone left silent for a
+  week because a timer died is the worst thing this app could do. Both halves
+  are proven on a device, including the stranding.
+- `INTERRUPTION_FILTER_PRIORITY`, never `NONE`: an alarm should still reach
+  someone who fell asleep over their work.
 - Android's lock-screen controls are the service's notification. iOS's are
   `MPNowPlayingInfoCenter` and `MPRemoteCommandCenter` — the system's own
   playback controls. `askToNotify`, `canNotify` and `openNotifySettings` are

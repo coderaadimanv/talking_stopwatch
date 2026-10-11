@@ -44,7 +44,12 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     // likely than the run screen to come back from a frozen Dart. Take the
     // platform's word for the elapsed time rather than our own.
     _lifecycle = AppLifecycleListener(
-      onResume: () => ref.read(runProvider.notifier).resync(),
+      onResume: () {
+        ref.read(runProvider.notifier).resync();
+        // Do Not Disturb access is granted on a system screen, so the app was
+        // in the background while the answer changed.
+        ref.invalidate(canSilenceProvider);
+      },
     );
   }
 
@@ -135,6 +140,8 @@ class _Ready extends ConsumerWidget {
           ),
         ),
 
+        const _Silence(),
+
         PillButton.primary(
           icon: Icons.play_arrow_rounded,
           label: run.preparing ? 'Getting ready…' : 'Start',
@@ -155,6 +162,100 @@ class _Ready extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Do Not Disturb for the length of the session, if the phone will allow it.
+///
+/// Off by default and shown here rather than buried in settings, because it
+/// is a decision about *this* session: silencing someone's phone is not
+/// something to do on their behalf because they opened a timer.
+///
+/// It is not shown at all where it cannot work. On iOS no app can turn a
+/// Focus on, [canSilenceProvider] answers null, and a switch promising it
+/// would simply be a lie.
+class _Silence extends ConsumerWidget {
+  const _Silence();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final allowed = ref.watch(canSilenceProvider).asData?.value;
+    if (allowed == null) return const SizedBox.shrink();
+
+    final on = ref.watch(appDataProvider).settings.silenceDuringFocus;
+    final colors = context.colors;
+    final text = Theme.of(context).textTheme;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: Sizes.gap),
+      padding: const EdgeInsets.fromLTRB(
+        Sizes.gutter,
+        Sizes.gap / 2,
+        Sizes.gap,
+        Sizes.gap / 2,
+      ),
+      decoration: BoxDecoration(
+        border: Border.all(color: Brand.cardLine, width: Sizes.hairline),
+        borderRadius: BorderRadius.circular(Sizes.radius),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.do_not_disturb_on_outlined,
+                size: Sizes.icon,
+                color: colors.focus,
+              ),
+              const SizedBox(width: Sizes.gap),
+              Expanded(
+                child: DefaultTextStyle.merge(
+                  style: text.titleMedium,
+                  child: const ActionLabel(
+                    'Silence the phone',
+                    alignment: AlignmentDirectional.centerStart,
+                  ),
+                ),
+              ),
+              Switch(
+                value: on,
+                // Both halves: the thumb alone leaves the track wearing the
+                // app's terracotta on a screen that is entirely teal.
+                activeThumbColor: colors.focus,
+                activeTrackColor: colors.washOf(colors.focus),
+                onChanged: (value) => ref
+                    .read(appDataProvider.notifier)
+                    .editSettings(
+                      (settings) =>
+                          settings.copyWith(silenceDuringFocus: value),
+                    ),
+              ),
+            ],
+          ),
+
+          // Switched on but not allowed yet. Said here rather than refused
+          // at the switch, because wanting it and being allowed it are two
+          // different things and only one of them is the user's answer.
+          if (on && !allowed)
+            InkWell(
+              onTap: () =>
+                  ref.read(cuePlayerProvider).openSilenceSettings(),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: Sizes.gap / 2),
+                child: Text(
+                  'Android has to allow this first. Tap to turn it on.',
+                  style: text.bodySmall?.copyWith(
+                    color: colors.danger,
+                    decoration: TextDecoration.underline,
+                    decorationColor: colors.danger,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
