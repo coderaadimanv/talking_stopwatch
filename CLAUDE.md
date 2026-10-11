@@ -206,6 +206,13 @@ minute instead, because a count-up has no end to show progress towards.
 This is the only screen allowed a shadow — see `Shadows` in `style.dart` for
 why. Everything else in the app stays flat.
 
+**The list and the settings stay dark**, and that is deliberate rather than
+unfinished. A phase colour is *information*: it says which phase you are in
+from across a room. There is no phase on those screens, so colouring them would
+only be shouting — and settings is where the longest explanatory text in the
+app lives. What carries over instead is the vocabulary: the soft ground, round
+badges, cards with room to breathe, and terracotta for whatever matters.
+
 ## The stopwatch is the exception to "nothing ticks"
 
 A workout has an end, so its whole script goes down in one call and the app can

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/style.dart';
+import '../../../app/widgets/circle_badge.dart';
 import '../../../app/widgets/circle_control.dart';
 import '../../../app/widgets/dial.dart';
 import '../../../app/widgets/soft_background.dart';
@@ -61,18 +62,10 @@ class StopwatchScreen extends ConsumerWidget {
             child: Column(
               children: [
                 const SizedBox(height: Sizes.bigGap),
-                Container(
-                  width: Sizes.badge,
-                  height: Sizes.badge,
-                  decoration: BoxDecoration(
-                    color: face,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.timer_outlined,
-                    color: deep,
-                    size: Sizes.bigIcon,
-                  ),
+                CircleBadge.icon(
+                  background: face,
+                  icon: Icons.timer_outlined,
+                  color: deep,
                 ),
                 const SizedBox(height: Sizes.gap),
                 Text(

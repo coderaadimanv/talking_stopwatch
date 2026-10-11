@@ -115,6 +115,7 @@ abstract final class Sizes {
   /// The phase name above the countdown.
   static const phaseText = 32.0;
 
+  static const iconSmall = 20.0;
   static const icon = 24.0;
   static const bigIcon = 32.0;
 
@@ -135,6 +136,12 @@ abstract final class Sizes {
 
   /// The circular badge above the phase name.
   static const badge = 72.0;
+
+  /// The same badge in a list row.
+  static const badgeSmall = 56.0;
+
+  /// And beside a section heading, where it must not outweigh the words.
+  static const badgeTiny = 44.0;
 
   /// The round controls at the foot of the running screen.
   static const circleControl = 64.0;

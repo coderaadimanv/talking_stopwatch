@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/style.dart';
+import '../../../app/widgets/circle_badge.dart';
 import '../../../app/widgets/circle_control.dart';
 import '../../../app/widgets/dial.dart';
 import '../../../app/widgets/round_tracker.dart';
@@ -191,11 +192,10 @@ class _Running extends ConsumerWidget {
     return Column(
       children: [
         const SizedBox(height: Sizes.bigGap),
-        Container(
-          width: Sizes.badge,
-          height: Sizes.badge,
-          decoration: BoxDecoration(color: face, shape: BoxShape.circle),
-          child: Icon(phaseIcon(kind), color: deep, size: Sizes.bigIcon),
+        CircleBadge.icon(
+          background: face,
+          icon: phaseIcon(kind),
+          color: deep,
         ),
         const SizedBox(height: Sizes.gap),
         Text(
