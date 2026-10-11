@@ -67,6 +67,37 @@ class Phrases {
   }
 }
 
+/// The words a focus session uses.
+///
+/// Only four of them differ, and they are the four that would be wrong: a
+/// block of concentrated work is not "go", and the pause after it is not a
+/// "rest". The cool down is the long break, because that is the phase that
+/// comes after the last block rather than between every pair.
+class FocusPhrases extends Phrases {
+  const FocusPhrases();
+
+  @override
+  String get ready => 'Starting';
+
+  @override
+  String get go => 'Focus';
+
+  @override
+  String get rest => 'Break';
+
+  @override
+  String get breakBetween => 'Long break';
+
+  @override
+  String get cooldown => 'Long break';
+}
+
+/// The words for a kind of timer. The one place the two vocabularies meet.
+Phrases phrasesFor(TimerKind kind) => switch (kind) {
+  TimerKind.workout => const Phrases(),
+  TimerKind.focus => const FocusPhrases(),
+};
+
 /// A stable, filesystem-safe name for the audio file a phrase renders to.
 ///
 /// FNV-1a, 64-bit. This is a cache key, not a signature: it only has to avoid

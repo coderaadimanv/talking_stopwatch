@@ -10,13 +10,26 @@ import '../../../core/timeline/workout.dart';
 /// What a phase is called on screen. Not the same as what is spoken: the voice
 /// says "go" because it is shorter to hear, the screen says "Work" because it
 /// is clearer to read.
-String phaseLabel(SegmentKind kind) => switch (kind) {
-  SegmentKind.prepare => 'Get ready',
-  SegmentKind.work => 'Work',
-  SegmentKind.rest => 'Rest',
-  SegmentKind.breakBetween => 'Break',
-  SegmentKind.cooldown => 'Cool down',
-};
+String phaseLabel(SegmentKind kind, {TimerKind of = TimerKind.workout}) =>
+    switch (of) {
+      TimerKind.workout => switch (kind) {
+        SegmentKind.prepare => 'Get ready',
+        SegmentKind.work => 'Work',
+        SegmentKind.rest => 'Rest',
+        SegmentKind.breakBetween => 'Break',
+        SegmentKind.cooldown => 'Cool down',
+      },
+      // A focus session has two phases worth naming and the screen says them
+      // quietly. "Cool down" is the long break here: it is the phase after
+      // the last block rather than one between blocks.
+      TimerKind.focus => switch (kind) {
+        SegmentKind.prepare => 'Starting',
+        SegmentKind.work => 'Focus',
+        SegmentKind.rest => 'Break',
+        SegmentKind.breakBetween => 'Long break',
+        SegmentKind.cooldown => 'Long break',
+      },
+    };
 
 /// The line under the phase name.
 ///

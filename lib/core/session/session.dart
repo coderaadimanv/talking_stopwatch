@@ -1,6 +1,7 @@
 import '../audio/cue_player.dart';
 import '../clock/clock.dart';
 import '../cues/cue.dart';
+import '../cues/phrase.dart';
 import '../cues/plan_cues.dart';
 import '../timeline/timeline.dart';
 import '../timeline/workout.dart';
@@ -96,7 +97,12 @@ class Session {
   void load(Workout workout, {int offsetMs = 0}) {
     _workout = workout;
     _timeline = expand(workout);
-    _cues = planCues(_timeline, workout.cues, offsetMs: offsetMs);
+    _cues = planCues(
+      _timeline,
+      workout.cues,
+      offsetMs: offsetMs,
+      phrases: phrasesFor(workout.kind),
+    );
     _status = SessionStatus.idle;
     _elapsedAtAnchor = 0;
     _anchorMs = clock.nowMs;

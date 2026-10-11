@@ -95,6 +95,21 @@ class AppDataController extends Notifier<AppData> {
     return workout;
   }
 
+  /// The same, for the other mode. A new one starts at the pomodoro, which is
+  /// the shape most people have in mind when they ask for a focus timer.
+  Workout addFocus({String name = 'New focus'}) {
+    final focus = Workout.focus(
+      id: newId(),
+      name: name,
+      focusMinutes: 25,
+      breakMinutes: 5,
+      blocks: 4,
+      longBreakMinutes: 15,
+    );
+    edit((data) => data.copyWith(presets: [...data.presets, focus]));
+    return focus;
+  }
+
   /// Copies a workout, so a variation does not have to be typed out again.
   Workout duplicate(String id) {
     final source = state.presets.firstWhere((w) => w.id == id);

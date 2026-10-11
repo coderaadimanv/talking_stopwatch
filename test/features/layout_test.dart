@@ -12,6 +12,7 @@ import 'package:talking_stopwatch/core/clock/clock.dart';
 import 'package:talking_stopwatch/core/store/store.dart';
 import 'package:talking_stopwatch/core/timeline/workout.dart';
 import 'package:talking_stopwatch/features/edit/ui/editor_screen.dart';
+import 'package:talking_stopwatch/features/focus/ui/focus_screen.dart';
 import 'package:talking_stopwatch/features/presets/ui/presets_screen.dart';
 import 'package:talking_stopwatch/features/run/domain/run_controller.dart';
 import 'package:talking_stopwatch/features/run/ui/run_screen.dart';
@@ -41,6 +42,17 @@ void main() {
     cooldownSeconds: 30,
   );
 
+  /// The pomodoro, with a name long enough to be awkward and a total long
+  /// enough to need the hour field.
+  final focus = Workout.focus(
+    id: 'pomodoro',
+    name: 'Deep work, mornings only',
+    focusMinutes: 25,
+    breakMinutes: 5,
+    blocks: 4,
+    longBreakMinutes: 15,
+  );
+
   setUp(() async {
     dir = await Directory.systemTemp.createTemp('layout_test');
     container = ProviderContainer(
@@ -48,7 +60,9 @@ void main() {
         cuePlayerProvider.overrideWithValue(FakeCuePlayer()),
         clockProvider.overrideWithValue(FakeClock()),
         storeProvider.overrideWithValue(Store(File('${dir.path}/data.json'))),
-        initialDataProvider.overrideWithValue(AppData(presets: [workout])),
+        initialDataProvider.overrideWithValue(
+          AppData(presets: [workout, focus]),
+        ),
       ],
     );
   });
@@ -123,7 +137,9 @@ void main() {
         ),
         clockProvider.overrideWithValue(FakeClock()),
         storeProvider.overrideWithValue(Store(File('${dir.path}/data.json'))),
-        initialDataProvider.overrideWithValue(AppData(presets: [workout])),
+        initialDataProvider.overrideWithValue(
+          AppData(presets: [workout, focus]),
+        ),
       ],
     );
   }
@@ -137,6 +153,70 @@ void main() {
       testWidgets('the list of workouts fits', (tester) async {
         await pumpAt(tester, const PresetsScreen(), size: size);
         expect(tester.takeException(), isNull);
+
+        // Both sections, both "new" buttons and the stopwatch, on the
+        // narrowest screen. Home is the one screen that grew when focus
+        // arrived.
+        expect(find.text('Workouts'), findsOneWidget);
+        expect(find.text('Focus'), findsOneWidget);
+        expect(find.text('Stopwatch'), findsOneWidget);
+      });
+
+      testWidgets('a focus session waiting to start fits', (tester) async {
+        container.read(selectedWorkoutIdProvider.notifier).select(focus.id);
+        await pumpAt(tester, const FocusScreen(), size: size);
+        expect(tester.takeException(), isNull);
+        expectOneLine(tester, 'Start', shortEnoughToNeverWrap: 'Edit');
+      });
+
+      testWidgets('a focus session in progress fits', (tester) async {
+        container.read(selectedWorkoutIdProvider.notifier).select(focus.id);
+        await pumpAt(tester, const FocusScreen(), size: size);
+        await container.read(runProvider.notifier).start();
+        await tester.pump();
+
+        // No warm up on a focus session: it starts in the first block.
+        expect(find.text('Focus'), findsOneWidget);
+        expect(find.text('Block 1 of 4'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        for (final label in ['Stop', 'Pause']) {
+          expectOneLine(tester, label, shortEnoughToNeverWrap: 'Skip');
+        }
+
+        await container.read(runProvider.notifier).stop();
+      });
+
+      testWidgets('a finished focus session fits', (tester) async {
+        container.read(selectedWorkoutIdProvider.notifier).select(focus.id);
+        await pumpAt(tester, const FocusScreen(), size: size);
+        final run = container.read(runProvider.notifier);
+        await run.start();
+
+        (container.read(clockProvider) as FakeClock).advance(3 * 60 * 60 * 1000);
+        await run.resync();
+        await tester.pump();
+
+        expect(find.text('Done'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        expectOneLine(tester, 'Again', shortEnoughToNeverWrap: 'Home');
+
+        await run.stop();
+      });
+
+      testWidgets('the focus editor fits', (tester) async {
+        await pumpAt(tester, EditorScreen(id: focus.id), size: size);
+        expect(tester.takeException(), isNull);
+
+        // The total in the badge is "2:10:00" where a workout's is "5:20",
+        // and inside a small disc it wrapped to "2:10:0 / 0" — which throws
+        // nothing, so only measuring it finds it.
+        expectOneLine(tester, '2:10:00', shortEnoughToNeverWrap: 'Focus');
+
+        // Four numbers and nothing else: no warm up, no exercises, and no
+        // switches for a script that is fixed quiet.
+        expect(find.text('Long break'), findsOneWidget);
+        expect(find.text('Get ready'), findsNothing);
+        expect(find.text('What it says'), findsNothing);
       });
 
       testWidgets('a workout waiting to start fits', (tester) async {

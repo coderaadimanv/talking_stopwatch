@@ -87,8 +87,8 @@ class AppData {
     ),
   );
 
-  /// What the app starts life with, so the first screen is usable rather than
-  /// empty: the interval everybody tries first.
+  /// What the app starts life with, so neither mode opens on an empty list:
+  /// the interval everybody tries first, and the pomodoro.
   static AppData get initial => AppData(
     presets: [
       Workout.simple(
@@ -97,6 +97,14 @@ class AppData {
         workSeconds: 30,
         restSeconds: 10,
         rounds: 8,
+      ),
+      Workout.focus(
+        id: 'default-pomodoro',
+        name: '25 / 5 × 4',
+        focusMinutes: 25,
+        breakMinutes: 5,
+        blocks: 4,
+        longBreakMinutes: 15,
       ),
     ],
     settings: AppSettings(keepScreenOn: keepScreenOnByDefault),

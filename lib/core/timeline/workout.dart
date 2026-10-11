@@ -4,6 +4,22 @@
 /// Everything downstream of [expand] is integer milliseconds.
 library;
 
+/// What a saved timer is for.
+///
+/// The two share this whole model — a focus session is work phases with rests
+/// between them, which is what a workout is — and differ in everything around
+/// it: what the phases are called, how much is said, and how loudly the screen
+/// says it. So this is the one field the rest of the app branches on, and the
+/// model itself never reads it.
+enum TimerKind {
+  /// Counted out loud and read across a gym.
+  workout,
+
+  /// A block of concentrated work. One word at each change, and a screen with
+  /// nothing on it to look at.
+  focus,
+}
+
 /// The kind of phase a [Segment] is, which decides the word spoken as it
 /// begins.
 enum SegmentKind {
@@ -67,6 +83,19 @@ class CueSettings {
     this.lastRound = true,
   });
 
+  /// One word as each phase begins, and nothing else: no countdown into a
+  /// change, no halfway, no round numbers.
+  ///
+  /// What a focus session runs on, and nothing in the planner has to know
+  /// that — this is the script the existing rules already produce with the
+  /// switches off.
+  static const quiet = CueSettings(
+    countdown: false,
+    roundLabels: false,
+    halfway: false,
+    lastRound: false,
+  );
+
   factory CueSettings.fromJson(Map<String, Object?> json) => CueSettings(
     countdown: json['countdown'] as bool? ?? true,
     countdownFrom: json['countdownFrom'] as int? ?? 3,
@@ -128,6 +157,7 @@ class Workout {
   const Workout({
     required this.id,
     this.name = '',
+    this.kind = TimerKind.workout,
     this.prepareSeconds = 10,
     required this.rounds,
     this.repeats = 1,
@@ -135,6 +165,31 @@ class Workout {
     this.cooldownSeconds = 0,
     this.cues = const CueSettings(),
   });
+
+  /// The other common case: blocks of focused work with breaks between them,
+  /// and a longer one at the end.
+  ///
+  /// The long break is the cool down rather than [breakSeconds], because it
+  /// comes after the last block and not between every pair of them.
+  factory Workout.focus({
+    required int focusMinutes,
+    required int breakMinutes,
+    required int blocks,
+    int longBreakMinutes = 0,
+    String id = 'focus',
+    String name = '',
+  }) => Workout(
+    id: id,
+    name: name,
+    kind: TimerKind.focus,
+    prepareSeconds: 0,
+    rounds: [
+      Round(workSeconds: focusMinutes * 60, restSeconds: breakMinutes * 60),
+    ],
+    repeats: blocks,
+    cooldownSeconds: longBreakMinutes * 60,
+    cues: CueSettings.quiet,
+  );
 
   /// The common case: one exercise, the same work and rest every round.
   factory Workout.simple({
@@ -157,6 +212,9 @@ class Workout {
   factory Workout.fromJson(Map<String, Object?> json) => Workout(
     id: json['id'] as String,
     name: json['name'] as String? ?? '',
+    // Absent means workout, which is what every preset was before focus
+    // existed. That is the whole migration.
+    kind: json['kind'] == 'focus' ? TimerKind.focus : TimerKind.workout,
     prepareSeconds: json['prepare'] as int? ?? 0,
     rounds: [
       for (final r in (json['rounds'] as List<Object?>? ?? const []))
@@ -172,6 +230,9 @@ class Workout {
 
   final String id;
   final String name;
+
+  /// What this timer is for: it decides the words, the screen and the script.
+  final TimerKind kind;
 
   /// Time to get into position before the first work phase.
   final int prepareSeconds;
@@ -195,6 +256,7 @@ class Workout {
   Workout copyWith({
     String? id,
     String? name,
+    TimerKind? kind,
     int? prepareSeconds,
     List<Round>? rounds,
     int? repeats,
@@ -204,6 +266,7 @@ class Workout {
   }) => Workout(
     id: id ?? this.id,
     name: name ?? this.name,
+    kind: kind ?? this.kind,
     prepareSeconds: prepareSeconds ?? this.prepareSeconds,
     rounds: rounds ?? this.rounds,
     repeats: repeats ?? this.repeats,
@@ -215,6 +278,7 @@ class Workout {
   Map<String, Object?> toJson() => {
     'id': id,
     'name': name,
+    if (kind != TimerKind.workout) 'kind': kind.name,
     'prepare': prepareSeconds,
     'rounds': [for (final r in rounds) r.toJson()],
     'repeats': repeats,
