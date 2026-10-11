@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The C of Cadent, which is also the dial every running screen draws, with
+     the beat sitting in its mouth.
+
+     Drawn to about three quarters of the 72dp circle the launcher actually
+     shows, not out to its edge: the safe zone is what may be displayed, not
+     what should be filled, and a mark that fills it reads a size larger than
+     everything beside it in the drawer. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M 70.09,67.50 A 21.0,21.0 0 1 1 70.09,40.50"
+        android:strokeColor="#D97745"
+        android:strokeWidth="9.5"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M 69.4,54.0 a 5.6,5.6 0 1,0 11.2,0 a 5.6,5.6 0 1,0 -11.2,0"
+        android:fillColor="#6E9A91" />
+</vector>

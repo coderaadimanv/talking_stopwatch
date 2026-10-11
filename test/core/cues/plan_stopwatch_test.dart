@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:talking_stopwatch/core/cues/cue.dart';
-import 'package:talking_stopwatch/core/cues/plan_stopwatch.dart';
+import 'package:cadent/core/cues/cue.dart';
+import 'package:cadent/core/cues/plan_stopwatch.dart';
 
 List<String> script(List<Cue> cues) =>
     cues.map((c) => '${c.atMs} ${c.text}').toList();

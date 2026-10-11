@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.anvuman.talking_stopwatch"
+    namespace = "com.anvuman.cadent"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -15,7 +15,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.anvuman.talking_stopwatch"
+        applicationId = "com.anvuman.cadent"
         // Android 10. The audio layer needs AudioFocusRequest (26) and
         // startForeground with a service type (29), and holding the line at 29
         // keeps a pile of compatibility branches out of the one code path that

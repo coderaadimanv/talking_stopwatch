@@ -2,13 +2,13 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:talking_stopwatch/app/providers.dart';
-import 'package:talking_stopwatch/core/audio/cue_player.dart';
-import 'package:talking_stopwatch/core/clock/clock.dart';
-import 'package:talking_stopwatch/core/cues/plan_stopwatch.dart';
-import 'package:talking_stopwatch/core/store/store.dart';
-import 'package:talking_stopwatch/core/timeline/workout.dart';
-import 'package:talking_stopwatch/features/stopwatch/domain/stopwatch_controller.dart';
+import 'package:cadent/app/providers.dart';
+import 'package:cadent/core/audio/cue_player.dart';
+import 'package:cadent/core/clock/clock.dart';
+import 'package:cadent/core/cues/plan_stopwatch.dart';
+import 'package:cadent/core/store/store.dart';
+import 'package:cadent/core/timeline/workout.dart';
+import 'package:cadent/features/stopwatch/domain/stopwatch_controller.dart';
 
 void main() {
   late Directory dir;

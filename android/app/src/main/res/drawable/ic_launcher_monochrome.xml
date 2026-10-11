@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The same mark as a silhouette, for Android's themed icons. One colour,
+     because the launcher tints the whole layer to match the wallpaper. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M 70.09,67.50 A 21.0,21.0 0 1 1 70.09,40.50"
+        android:strokeColor="#000000"
+        android:strokeWidth="9.5"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M 69.4,54.0 a 5.6,5.6 0 1,0 11.2,0 a 5.6,5.6 0 1,0 -11.2,0"
+        android:fillColor="#000000" />
+</vector>

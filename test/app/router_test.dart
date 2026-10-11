@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:talking_stopwatch/app/router.dart';
-import 'package:talking_stopwatch/core/store/store.dart';
-import 'package:talking_stopwatch/core/timeline/workout.dart';
+import 'package:cadent/app/router.dart';
+import 'package:cadent/core/store/store.dart';
+import 'package:cadent/core/timeline/workout.dart';
 
 /// Where the app opens after being killed with a session still playing.
 ///

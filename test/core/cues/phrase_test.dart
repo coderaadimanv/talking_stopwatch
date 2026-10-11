@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:talking_stopwatch/core/cues/phrase.dart';
-import 'package:talking_stopwatch/core/timeline/workout.dart';
+import 'package:cadent/core/cues/phrase.dart';
+import 'package:cadent/core/timeline/workout.dart';
 
 void main() {
   group('Phrases', () {

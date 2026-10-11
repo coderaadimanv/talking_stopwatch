@@ -1,4 +1,4 @@
-package com.anvuman.talking_stopwatch
+package com.anvuman.cadent
 
 import android.content.Context
 import android.os.Bundle

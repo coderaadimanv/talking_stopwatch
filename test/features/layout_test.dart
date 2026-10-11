@@ -4,21 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:talking_stopwatch/app/style.dart';
-import 'package:talking_stopwatch/app/widgets/tick_ring.dart';
-import 'package:talking_stopwatch/app/providers.dart';
-import 'package:talking_stopwatch/core/audio/cue_player.dart';
-import 'package:talking_stopwatch/core/clock/clock.dart';
-import 'package:talking_stopwatch/core/store/store.dart';
-import 'package:talking_stopwatch/core/timeline/workout.dart';
-import 'package:talking_stopwatch/features/edit/ui/editor_screen.dart';
-import 'package:talking_stopwatch/features/focus/ui/focus_screen.dart';
-import 'package:talking_stopwatch/features/presets/ui/presets_screen.dart';
-import 'package:talking_stopwatch/features/run/domain/run_controller.dart';
-import 'package:talking_stopwatch/features/run/ui/run_screen.dart';
-import 'package:talking_stopwatch/features/settings/ui/settings_screen.dart';
-import 'package:talking_stopwatch/features/stopwatch/domain/stopwatch_controller.dart';
-import 'package:talking_stopwatch/features/stopwatch/ui/stopwatch_screen.dart';
+import 'package:cadent/app/style.dart';
+import 'package:cadent/app/widgets/tick_ring.dart';
+import 'package:cadent/app/providers.dart';
+import 'package:cadent/core/audio/cue_player.dart';
+import 'package:cadent/core/clock/clock.dart';
+import 'package:cadent/core/store/store.dart';
+import 'package:cadent/core/timeline/workout.dart';
+import 'package:cadent/features/edit/ui/editor_screen.dart';
+import 'package:cadent/features/focus/ui/focus_screen.dart';
+import 'package:cadent/features/presets/ui/presets_screen.dart';
+import 'package:cadent/features/run/domain/run_controller.dart';
+import 'package:cadent/features/run/ui/run_screen.dart';
+import 'package:cadent/features/settings/ui/settings_screen.dart';
+import 'package:cadent/features/stopwatch/domain/stopwatch_controller.dart';
+import 'package:cadent/features/stopwatch/ui/stopwatch_screen.dart';
 
 /// Every screen, on the smallest phone anyone still carries and on a normal
 /// one, checked for the overflow stripes.

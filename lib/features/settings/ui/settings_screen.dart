@@ -217,7 +217,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _testVoice() async {
     const cue = Cue(atMs: 0, text: 'Go', priority: CuePriority.phaseWord);
     final player = ref.read(cuePlayerProvider);
-    await player.describe('Talking Stopwatch', 'Testing the voice');
+    await player.describe('Cadent', 'Testing the voice');
     await player.warm(const [cue]);
     await player.schedule(const [cue], countUp: true);
   }

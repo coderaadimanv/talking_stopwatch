@@ -21,7 +21,7 @@ import UIKit
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
 
     let channel = FlutterMethodChannel(
-      name: "com.anvuman.talking_stopwatch/cues",
+      name: "com.anvuman.cadent/cues",
       binaryMessenger: engineBridge.applicationRegistrar.messenger()
     )
     self.channel = channel

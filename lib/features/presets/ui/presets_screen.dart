@@ -46,7 +46,7 @@ class PresetsScreen extends ConsumerWidget {
       backgroundColor: Brand.ink,
       appBar: AppBar(
         backgroundColor: Brand.transparent,
-        title: const Text('Talking Stopwatch'),
+        title: const Text('Cadent'),
         actions: [
           IconButton(
             onPressed: () => context.go('/settings'),
