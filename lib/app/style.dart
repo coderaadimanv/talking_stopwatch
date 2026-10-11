@@ -92,9 +92,13 @@ abstract final class Sizes {
   static const icon = 24.0;
   static const bigIcon = 32.0;
 
-  /// Almost square. The brand's radius is 2px and it is most of its character:
-  /// rounder corners make this a different app.
-  static const radius = 2.0;
+  /// The corner on every button, card and control.
+  ///
+  /// The brand's own radius is 2px, which is right for an editorial website
+  /// and read as hard-edged on a phone, where the controls are large and sit
+  /// under a thumb. Softened here, and deliberately one number: change this
+  /// and the whole app changes with it.
+  static const radius = 14.0;
 
   static const hairline = 1.0;
 }
@@ -255,6 +259,24 @@ const _shape = RoundedRectangleBorder(
   borderRadius: BorderRadius.all(Radius.circular(Sizes.radius)),
 );
 
+/// Jost, the brand's typeface, bundled as a single variable file.
+const _fontFamily = 'Jost';
+
+extension _VariableWeight on TextStyle {
+  /// Sets a weight on a variable font.
+  ///
+  /// Both halves are needed. `fontWeight` is what Flutter lays out and falls
+  /// back on; `fontVariations` is what actually moves Jost's weight axis. Set
+  /// only the first and every weight in the app renders as Regular.
+  TextStyle weight(int value) => copyWith(
+    fontWeight: FontWeight.values.firstWhere(
+      (w) => w.value == value,
+      orElse: () => FontWeight.normal,
+    ),
+    fontVariations: [FontVariation.weight(value.toDouble())],
+  );
+}
+
 /// The app's theme. Dark, because this screen is looked at in a gym at six in
 /// the morning and is mostly one enormous number.
 ThemeData appTheme() {
@@ -283,6 +305,7 @@ ThemeData appTheme() {
     useMaterial3: true,
     brightness: Brightness.dark,
     colorScheme: scheme,
+    fontFamily: _fontFamily,
     scaffoldBackgroundColor: Brand.ink,
     extensions: const [AppColors.dark],
   );
@@ -324,15 +347,17 @@ ThemeData appTheme() {
 
     iconTheme: const IconThemeData(size: Sizes.icon, color: Brand.ivory),
 
-    listTileTheme: const ListTileThemeData(
+    listTileTheme: ListTileThemeData(
       minTileHeight: Sizes.row,
-      contentPadding: EdgeInsets.symmetric(horizontal: Sizes.gutter),
-      titleTextStyle: TextStyle(
+      contentPadding: const EdgeInsets.symmetric(horizontal: Sizes.gutter),
+      titleTextStyle: const TextStyle(
         color: Brand.ivory,
         fontSize: 16,
-        fontWeight: FontWeight.w500,
-      ),
-      subtitleTextStyle: TextStyle(color: Brand.taupe, fontSize: 13),
+      ).weight(500),
+      subtitleTextStyle: const TextStyle(
+        color: Brand.taupe,
+        fontSize: 13,
+      ).weight(400),
       iconColor: Brand.taupe,
     ),
 
@@ -388,13 +413,13 @@ ThemeData appTheme() {
           BorderSide(color: Brand.line, width: Sizes.hairline),
         ),
         shape: const WidgetStatePropertyAll(_shape),
-        textStyle: const WidgetStatePropertyAll(
-          TextStyle(fontWeight: FontWeight.w500, letterSpacing: Tracking.wide),
+        textStyle: WidgetStatePropertyAll(
+          const TextStyle(letterSpacing: Tracking.wide).weight(500),
         ),
       ),
     ),
 
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: Brand.terracotta,
       foregroundColor: Brand.ink,
       elevation: 0,
@@ -402,10 +427,9 @@ ThemeData appTheme() {
       hoverElevation: 0,
       highlightElevation: 0,
       shape: _shape,
-      extendedTextStyle: TextStyle(
-        fontWeight: FontWeight.w600,
+      extendedTextStyle: const TextStyle(
         letterSpacing: Tracking.wide,
-      ),
+      ).weight(600),
     ),
   );
 }
@@ -433,7 +457,7 @@ ButtonStyle _filled() => ButtonStyle(
     EdgeInsets.symmetric(horizontal: Sizes.gap),
   ),
   shape: const WidgetStatePropertyAll(_shape),
-  textStyle: const WidgetStatePropertyAll(_actionText),
+  textStyle: WidgetStatePropertyAll(_actionText),
   iconSize: const WidgetStatePropertyAll(Sizes.bigIcon),
 );
 
@@ -466,7 +490,7 @@ ButtonStyle _outlined() => ButtonStyle(
     EdgeInsets.symmetric(horizontal: Sizes.gap),
   ),
   shape: const WidgetStatePropertyAll(_shape),
-  textStyle: const WidgetStatePropertyAll(_actionText),
+  textStyle: WidgetStatePropertyAll(_actionText),
   iconSize: const WidgetStatePropertyAll(Sizes.icon),
 );
 
@@ -482,7 +506,7 @@ ButtonStyle _text() => ButtonStyle(
     Size(Sizes.control, Sizes.control),
   ),
   shape: const WidgetStatePropertyAll(_shape),
-  textStyle: const WidgetStatePropertyAll(_actionText),
+  textStyle: WidgetStatePropertyAll(_actionText),
 );
 
 ButtonStyle _icon() => ButtonStyle(
@@ -500,55 +524,45 @@ ButtonStyle _icon() => ButtonStyle(
 /// 14 rather than 15, and tracked a little less than the headings. Wide
 /// tracking costs real width, and three buttons in a row on a 320dp phone do
 /// not have it to spare — at 15/1.6 "Reset" wrapped to "Re / set".
-const _actionText = TextStyle(
+final _actionText = const TextStyle(
   fontSize: 14,
-  fontWeight: FontWeight.w600,
   letterSpacing: 1.2,
-);
+).weight(600);
 
 TextTheme _textTheme(TextTheme base) => base.copyWith(
   // The countdown. Thin and enormous, pulled tight so the digits sit together
   // rather than drifting apart at 140 points.
-  displayLarge: base.displayLarge?.copyWith(
-    fontSize: Sizes.countdownText,
-    fontWeight: FontWeight.w200,
-    letterSpacing: Tracking.display,
-    height: 1,
-    color: Brand.ivory,
-  ),
-  headlineLarge: base.headlineLarge?.copyWith(
-    fontSize: Sizes.phaseText,
-    fontWeight: FontWeight.w600,
-    letterSpacing: Tracking.wide,
-    color: Brand.ivory,
-  ),
-  headlineSmall: base.headlineSmall?.copyWith(
-    fontWeight: FontWeight.w500,
-    letterSpacing: Tracking.tight,
-    color: Brand.ivory,
-  ),
-  titleLarge: base.titleLarge?.copyWith(
-    fontWeight: FontWeight.w500,
-    letterSpacing: Tracking.tight,
-    color: Brand.ivory,
-  ),
-  titleMedium: base.titleMedium?.copyWith(
-    fontWeight: FontWeight.w500,
-    color: Brand.ivory,
-  ),
-  bodyLarge: base.bodyLarge?.copyWith(color: Brand.ivory),
-  bodyMedium: base.bodyMedium?.copyWith(color: Brand.taupe),
-  bodySmall: base.bodySmall?.copyWith(color: Brand.taupe),
+  displayLarge: base.displayLarge
+      ?.copyWith(
+        fontSize: Sizes.countdownText,
+        letterSpacing: Tracking.display,
+        height: 1,
+        color: Brand.ivory,
+      )
+      .weight(200),
+  headlineLarge: base.headlineLarge
+      ?.copyWith(
+        fontSize: Sizes.phaseText,
+        letterSpacing: Tracking.wide,
+        color: Brand.ivory,
+      )
+      .weight(600),
+  headlineSmall: base.headlineSmall
+      ?.copyWith(letterSpacing: Tracking.tight, color: Brand.ivory)
+      .weight(500),
+  titleLarge: base.titleLarge
+      ?.copyWith(letterSpacing: Tracking.tight, color: Brand.ivory)
+      .weight(500),
+  titleMedium: base.titleMedium?.copyWith(color: Brand.ivory).weight(500),
+  bodyLarge: base.bodyLarge?.copyWith(color: Brand.ivory).weight(400),
+  bodyMedium: base.bodyMedium?.copyWith(color: Brand.taupe).weight(400),
+  bodySmall: base.bodySmall?.copyWith(color: Brand.taupe).weight(400),
   // Section headings, set the way the brand sets them: small, uppercase and
   // widely tracked.
-  labelLarge: base.labelLarge?.copyWith(
-    fontWeight: FontWeight.w600,
-    letterSpacing: Tracking.wider,
-    color: Brand.taupe,
-  ),
-  labelMedium: base.labelMedium?.copyWith(
-    fontWeight: FontWeight.w600,
-    letterSpacing: Tracking.wide,
-    color: Brand.taupe,
-  ),
+  labelLarge: base.labelLarge
+      ?.copyWith(letterSpacing: Tracking.wider, color: Brand.taupe)
+      .weight(600),
+  labelMedium: base.labelMedium
+      ?.copyWith(letterSpacing: Tracking.wide, color: Brand.taupe)
+      .weight(600),
 );

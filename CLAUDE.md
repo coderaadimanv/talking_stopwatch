@@ -53,10 +53,13 @@ Why it matters:
    calls. They are the heart of the app and they are fully unit-tested.
 5. **The cue-script rules live in exactly one place** (`core/cues/`). No screen
    decides when to say something.
-6. **Every colour lives in `lib/app/palette.dart`.** Never `Colors.green` or
-   `Color(0x…)` in a widget; screens use the theme or `context.colors`.
-7. **Every named size lives in `lib/app/sizes.dart`.** No screen gives itself
-   `iconSize: 28` or `minimumSize:`.
+6. **The whole look lives in `lib/app/style.dart`** — colours, sizes, shapes,
+   type and the theme. Never `Colors.green`, `Color(0x…)`, `fontSize:` or
+   `minimumSize:` in a widget; screens use the theme or `context.colors`.
+   `test/app/conventions_test.dart` fails the build if one starts to.
+7. **A button label never wraps.** Use `ActionLabel`, which shrinks instead.
+   Wrapping is not an overflow, so nothing throws and "Re / set" just looks
+   like a choice — and it happens to anyone who turns their system font up.
 8. **Tests before implementation** for anything in `core/timeline`,
    `core/cues`, or `core/audio`.
 9. The app must be fully usable offline with no login. There is no account and
@@ -81,13 +84,20 @@ Why it matters:
 
 **Dependencies are `flutter_riverpod`, `go_router`, `path_provider`. That is
 all. Do not add a package without asking** — and never one for audio, TTS,
-hashing, or storage; those are deliberately hand-rolled.
+hashing, storage or fonts; those are deliberately hand-rolled.
+
+The typeface is **Jost**, Anvil Lab Studio's, bundled as a single variable
+file at `assets/fonts/Jost-Variable.ttf` (135 KB, and smaller than the four
+static cuts it replaces). Its licence ships beside it because the SIL OFL says
+it must. A variable font needs **both** `fontWeight` and `fontVariations` set —
+`TextStyle.weight()` in `style.dart` does both, and setting only the first
+renders every weight as Regular.
 
 ## Folder layout
 
 ```
 lib/
-  app/              app widget, router, theme, palette.dart, sizes.dart
+  app/              app widget, router, style.dart (the whole look)
   core/
     clock/          monotonic clock abstraction (testable)
     timeline/       Workout, Round, Segment, expand()          — pure
