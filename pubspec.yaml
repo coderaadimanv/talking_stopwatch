@@ -21,3 +21,14 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Jost, the brand's typeface. One variable file covers every weight the app
+  # uses, which is smaller than four static cuts would be. The licence ships
+  # with it because the SIL OFL says it must.
+  fonts:
+    - family: Jost
+      fonts:
+        - asset: assets/fonts/Jost-Variable.ttf
+
+  assets:
+    - assets/fonts/OFL.txt

@@ -53,10 +53,13 @@ Why it matters:
    calls. They are the heart of the app and they are fully unit-tested.
 5. **The cue-script rules live in exactly one place** (`core/cues/`). No screen
    decides when to say something.
-6. **Every colour lives in `lib/app/palette.dart`.** Never `Colors.green` or
-   `Color(0x…)` in a widget; screens use the theme or `context.colors`.
-7. **Every named size lives in `lib/app/sizes.dart`.** No screen gives itself
-   `iconSize: 28` or `minimumSize:`.
+6. **The whole look lives in `lib/app/style.dart`** — colours, sizes, shapes,
+   type and the theme. Never `Colors.green`, `Color(0x…)`, `fontSize:` or
+   `minimumSize:` in a widget; screens use the theme or `context.colors`.
+   `test/app/conventions_test.dart` fails the build if one starts to.
+7. **A button label never wraps.** Use `ActionLabel`, which shrinks instead.
+   Wrapping is not an overflow, so nothing throws and "Re / set" just looks
+   like a choice — and it happens to anyone who turns their system font up.
 8. **Tests before implementation** for anything in `core/timeline`,
    `core/cues`, or `core/audio`.
 9. The app must be fully usable offline with no login. There is no account and
@@ -81,13 +84,20 @@ Why it matters:
 
 **Dependencies are `flutter_riverpod`, `go_router`, `path_provider`. That is
 all. Do not add a package without asking** — and never one for audio, TTS,
-hashing, or storage; those are deliberately hand-rolled.
+hashing, storage or fonts; those are deliberately hand-rolled.
+
+The typeface is **Jost**, Anvil Lab Studio's, bundled as a single variable
+file at `assets/fonts/Jost-Variable.ttf` (135 KB, and smaller than the four
+static cuts it replaces). Its licence ships beside it because the SIL OFL says
+it must. A variable font needs **both** `fontWeight` and `fontVariations` set —
+`TextStyle.weight()` in `style.dart` does both, and setting only the first
+renders every weight as Regular.
 
 ## Folder layout
 
 ```
 lib/
-  app/              app widget, router, theme, palette.dart, sizes.dart
+  app/              app widget, router, style.dart (the whole look)
   core/
     clock/          monotonic clock abstraction (testable)
     timeline/       Workout, Round, Segment, expand()          — pure
@@ -176,6 +186,41 @@ Two Android details that the app depends on and that are easy to undo:
 `leadMs` is zero from Dart on purpose: the platform pins cue zero that far in
 the future while `Session` pins it to the moment of the call, so anything else
 is the display and the voice disagreeing by exactly that much.
+
+## The running screens
+
+The run screen and the stopwatch share one language, and it is worth keeping:
+a soft coloured ground, a badge and name at the top, a **dial** carrying the
+time with the progress drawn around its edge, three round controls, and a
+tracker along the foot. The pieces live in `lib/app/widgets/`.
+
+The number sits on the dial's pale face rather than on the colour, and that is
+not decoration — it is where it gets its contrast. The heading and caption are
+the parts that can afford to be softer.
+
+Two rules the dial follows: it shrinks to the **height** it is given as well as
+the width, so a short phone loses dial rather than controls; and the arc is
+**elapsed**, drawn clockwise from noon. The stopwatch's arc sweeps once a
+minute instead, because a count-up has no end to show progress towards.
+
+This is the only screen allowed a shadow — see `Shadows` in `style.dart` for
+why. Everything else in the app stays flat.
+
+**The list and the settings stay dark**, and that is deliberate rather than
+unfinished. A phase colour is *information*: it says which phase you are in
+from across a room. There is no phase on those screens, so colouring them would
+only be shouting — and settings is where the longest explanatory text in the
+app lives. What carries over instead is the vocabulary: the soft ground, round
+badges, cards with room to breathe, and terracotta for whatever matters.
+
+`SoftBackground` has two moods for this. On a phase colour its shapes are that
+colour lifted and dropped a little and stay nearly invisible; on a dark screen
+there is nothing to lift, so it takes a `glow` and lays down pools of it
+instead. That is where the warmth on the list and the settings comes from.
+
+A badge on a dark screen is filled with `Brand.accentWash` — the accent turned
+right down — not with ivory. A pale disc on a dark page is a hole punched in
+it.
 
 ## The stopwatch is the exception to "nothing ticks"
 

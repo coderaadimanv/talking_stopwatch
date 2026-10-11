@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../sizes.dart';
+import '../style.dart';
 
 /// A label, a number, and a thumb-sized minus and plus.
 ///

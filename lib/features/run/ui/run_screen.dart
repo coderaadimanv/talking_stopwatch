@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/palette.dart';
 import '../../../app/providers.dart';
-import '../../../app/sizes.dart';
+import '../../../app/style.dart';
+import '../../../app/widgets/circle_badge.dart';
+import '../../../app/widgets/circle_control.dart';
+import '../../../app/widgets/dial.dart';
+import '../../../app/widgets/round_tracker.dart';
+import '../../../app/widgets/soft_background.dart';
 import '../../../core/format.dart';
 import '../../../core/session/session.dart';
 import '../../../core/timeline/summary.dart';
+import '../../../core/timeline/timeline.dart';
 import '../../../core/timeline/workout.dart';
 import '../domain/run_controller.dart';
 
@@ -66,20 +71,35 @@ class _RunScreenState extends ConsumerState<RunScreen> {
                 icon: const Icon(Icons.arrow_back),
               ),
             ),
-      body: SafeArea(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          color: background,
-          padding: const EdgeInsets.all(Sizes.gutter),
-          child: switch (session.status) {
-            SessionStatus.idle => const _Ready(),
-            SessionStatus.finished => const _Finished(),
-            _ => _Running(session: session),
-          },
+      body: _Ground(
+        // Only a running phase gets the soft ground; idle and finished sit on
+        // the app's own dark surface, where they belong with the rest of it.
+        color: background,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(Sizes.gutter),
+            child: switch (session.status) {
+              SessionStatus.idle => const _Ready(),
+              SessionStatus.finished => const _Finished(),
+              _ => _Running(session: session),
+            },
+          ),
         ),
       ),
     );
   }
+}
+
+class _Ground extends StatelessWidget {
+  const _Ground({required this.color, required this.child});
+
+  final Color? color;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => color == null
+      ? child
+      : SoftBackground(color: color!, child: child);
 }
 
 /// What a workout looks like before it starts: what you are about to do, how
@@ -126,7 +146,7 @@ class _Ready extends ConsumerWidget {
             onPressed: run.preparing
                 ? null
                 : () => ref.read(runProvider.notifier).start(),
-            child: Text(run.preparing ? 'Getting ready…' : 'Start'),
+            child: ActionLabel(run.preparing ? 'Getting ready…' : 'Start'),
           ),
         ),
         const SizedBox(height: Sizes.gap),
@@ -139,6 +159,13 @@ class _Ready extends ConsumerWidget {
   }
 }
 
+/// A workout in progress, and the screen the whole app exists for.
+///
+/// Read from across a room: the colour says which phase, the arc says how far
+/// through, and only a proper look needs the number. The number itself sits on
+/// the pale dial rather than on the phase colour, which is where it gets its
+/// contrast — the heading and caption are the parts that can afford to be
+/// softer.
 class _Running extends ConsumerWidget {
   const _Running({required this.session});
 
@@ -149,135 +176,196 @@ class _Running extends ConsumerWidget {
     final controller = ref.read(runProvider.notifier);
     final segment = session.segment;
     final paused = session.status == SessionStatus.paused;
-    final rounds = ref.watch(workoutProvider).workPhases;
+    final workout = ref.watch(workoutProvider);
     final text = Theme.of(context).textTheme;
-    final on = context.colors.onPhase;
-    final accent = segment == null
-        ? context.colors.idle
-        : context.colors.phase(segment.kind);
+
+    final kind = segment?.kind ?? SegmentKind.work;
+    final colors = context.colors;
+    final on = colors.onPhase(kind);
+    final face = colors.phaseFace(kind);
+    final deep = colors.phaseDeep(kind);
+
+    final elapsed = segment == null || segment.durationMs == 0
+        ? 0.0
+        : 1 - session.segmentRemainingMs / segment.durationMs;
 
     return Column(
       children: [
-        const Spacer(),
+        const SizedBox(height: Sizes.bigGap),
+        CircleBadge.icon(
+          background: face,
+          icon: phaseIcon(kind),
+          color: deep,
+        ),
+        const SizedBox(height: Sizes.gap),
         Text(
           segment == null ? '' : phaseLabel(segment.kind),
           style: text.headlineLarge?.copyWith(color: on),
         ),
+        Text(
+          segment == null ? '' : phaseCaption(segment),
+          style: text.labelLarge?.copyWith(color: on.withValues(alpha: 0.72)),
+        ),
+
+        Expanded(
+          child: Center(
+            child: Dial(
+              progress: elapsed,
+              face: face,
+              arc: deep,
+              child: _DialFace(
+                session: session,
+                segment: segment,
+                rounds: workout.workPhases,
+                paused: paused,
+              ),
+            ),
+          ),
+        ),
+
+        Row(
+          children: [
+            Expanded(
+              child: CircleControl(
+                icon: Icons.stop_rounded,
+                label: 'Stop',
+                onPressed: controller.stop,
+                background: face,
+                foreground: deep,
+                labelColor: on,
+              ),
+            ),
+            Expanded(
+              child: CircleControl(
+                icon: paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                label: paused ? 'Resume' : 'Pause',
+                onPressed: paused ? controller.resume : controller.pause,
+                background: deep,
+                foreground: colors.onPhaseDeep(kind),
+                labelColor: on,
+                primary: true,
+              ),
+            ),
+            Expanded(
+              child: CircleControl(
+                icon: Icons.skip_next_rounded,
+                label: 'Skip',
+                onPressed: controller.skip,
+                background: face,
+                foreground: deep,
+                labelColor: on,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: Sizes.bigGap),
+
+        RoundTracker(
+          done: segment?.kind == SegmentKind.work
+              ? segment!.index
+              : _roundsDone(session, workout.workPhases),
+          total: workout.workPhases,
+          filled: deep,
+          empty: face.withValues(alpha: 0.45),
+          track: face.withValues(alpha: 0.18),
+        ),
+      ],
+    );
+  }
+
+  /// Between work phases — resting, on a break — the round just finished is
+  /// the one to show as done.
+  int _roundsDone(SessionState session, int total) {
+    var done = 0;
+    for (final s in session.timeline.segments) {
+      if (s.kind == SegmentKind.work && s.endMs <= session.elapsedMs) done++;
+    }
+    return done > total ? total : done;
+  }
+}
+
+/// What sits inside the dial: the number, which round, and how long is left of
+/// the whole workout.
+class _DialFace extends StatelessWidget {
+  const _DialFace({
+    required this.session,
+    required this.segment,
+    required this.rounds,
+    required this.paused,
+  });
+
+  final SessionState session;
+  final Segment? segment;
+  final int rounds;
+  final bool paused;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final ink = context.colors.onPhase(SegmentKind.prepare);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
         FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
             countdown(session.segmentRemainingMs),
-            style: text.displayLarge?.copyWith(color: on),
+            style: text.displayLarge?.copyWith(color: ink),
           ),
         ),
-        if (segment != null && segment.kind == SegmentKind.work)
+        if (segment != null && segment!.kind == SegmentKind.work)
           Text(
-            segment.label.isNotEmpty
-                ? segment.label
-                : 'Round ${segment.index} of $rounds',
-            style: text.titleMedium?.copyWith(color: on),
+            'Round ${segment!.index} of $rounds',
+            style: text.titleMedium?.copyWith(color: ink),
           ),
         const SizedBox(height: Sizes.gap),
-        Text(
-          paused ? 'Paused' : '${countdown(session.remainingMs)} left',
-          style: text.bodyMedium?.copyWith(color: on),
-        ),
-        const Spacer(),
-        // Each control takes a third of whatever width there is: three
-        // fixed-width buttons fit a 360dp phone and overflow a 320dp one.
-        Row(
-          children: [
-            Expanded(
-              child: _Control(
-                icon: Icons.stop,
-                label: 'Stop',
-                accent: accent,
-                onPressed: controller.stop,
-              ),
-            ),
-            Expanded(
-              child: _Control(
-                icon: paused ? Icons.play_arrow : Icons.pause,
-                label: paused ? 'Resume' : 'Pause',
-                accent: accent,
-                big: true,
-                onPressed: paused ? controller.resume : controller.pause,
-              ),
-            ),
-            Expanded(
-              child: _Control(
-                icon: Icons.skip_next,
-                label: 'Skip',
-                accent: accent,
-                onPressed: controller.skip,
-              ),
-            ),
-          ],
+        _Chip(
+          icon: paused ? Icons.pause_rounded : Icons.schedule_rounded,
+          label: paused
+              ? 'Paused'
+              : '${countdown(session.remainingMs)} left',
         ),
       ],
     );
   }
 }
 
-/// A control drawn on top of a phase colour, so it takes its colours from the
-/// phase rather than from the theme's own palette — a green button on a green
-/// background is no button at all.
-class _Control extends StatelessWidget {
-  const _Control({
-    required this.icon,
-    required this.label,
-    required this.accent,
-    required this.onPressed,
-    this.big = false,
-  });
+class _Chip extends StatelessWidget {
+  const _Chip({required this.icon, required this.label});
 
   final IconData icon;
   final String label;
 
-  /// The colour behind this control, which its icon is punched out of.
-  final Color accent;
-
-  final VoidCallback onPressed;
-  final bool big;
-
   @override
   Widget build(BuildContext context) {
-    final side = big ? Sizes.bigControl : Sizes.control;
-    final on = context.colors.onPhase;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Every control reserves the same height, so the labels line up even
-        // though the middle button is the big one.
-        SizedBox(
-          height: Sizes.bigControl,
-          child: Center(
-            child: SizedBox(
-              height: side,
-              width: side,
-              child: big
-                  ? FilledButton(
-                      onPressed: onPressed,
-                      style: FilledButton.styleFrom(backgroundColor: on),
-                      child: Icon(icon, color: accent),
-                    )
-                  : OutlinedButton(
-                      onPressed: onPressed,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: on,
-                        side: BorderSide(color: on),
-                      ),
-                      child: Icon(icon),
-                    ),
+    final ink = context.colors.onPhase(SegmentKind.prepare);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Sizes.gap,
+        vertical: Sizes.gap / 2,
+      ),
+      decoration: BoxDecoration(
+        color: ink.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(Sizes.control / 2),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: Sizes.chipIcon, color: ink.withValues(alpha: 0.7)),
+          const SizedBox(width: Sizes.gap / 2),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: ink.withValues(alpha: 0.8),
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: Sizes.gap),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(color: on),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -296,7 +384,7 @@ class _Finished extends ConsumerWidget {
         width: double.infinity,
         child: FilledButton(
           onPressed: ref.read(runProvider.notifier).stop,
-          child: const Text('Again'),
+          child: const ActionLabel('Again'),
         ),
       ),
       const SizedBox(height: Sizes.gap),
