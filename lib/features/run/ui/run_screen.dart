@@ -40,7 +40,12 @@ class _RunScreenState extends ConsumerState<RunScreen> {
     // frozen for the last twenty minutes, so take the platform's word for how
     // long the session has really been running.
     _lifecycle = AppLifecycleListener(
-      onResume: () => ref.read(runProvider.notifier).resync(),
+      onResume: () {
+        ref.read(runProvider.notifier).resync();
+        // The ready screen sends people to a system screen to turn
+        // notifications on. Coming back is the only word of it we get.
+        ref.invalidate(canNotifyProvider);
+      },
     );
   }
 
@@ -128,6 +133,7 @@ class _Ready extends ConsumerWidget {
     final workout = ref.watch(workoutProvider);
     final run = ref.watch(runProvider);
     final hasVoice = ref.watch(voiceAvailableProvider).asData?.value ?? true;
+    final canNotify = ref.watch(canNotifyProvider).asData?.value;
     final colors = context.colors;
     final accent = colors.work;
     final text = Theme.of(context).textTheme;
@@ -201,15 +207,30 @@ class _Ready extends ConsumerWidget {
           ),
         ),
 
-        if (!hasVoice) ...[
+        // What is wrong with the phone, in the smallest type on the screen
+        // and directly above the button it affects. Both notices are one
+        // block with no gap between them: on a 320dp phone with both of them
+        // showing there is nothing left of the ring, and spacing between two
+        // warnings is the first thing that should go.
+        if (!hasVoice)
           Text(
             'This phone has no voice installed, so the timer will run '
             'without speaking.',
             textAlign: TextAlign.center,
             style: text.bodySmall?.copyWith(color: colors.danger),
           ),
+
+        // Said here as well as in settings, because this is the last moment
+        // it can still be acted on: once the phone is face down in a gym bag
+        // the empty lock screen is the symptom, and nobody goes looking for
+        // the cause.
+        if (canNotify == false)
+          _NotifyNotice(
+            onTap: () => ref.read(cuePlayerProvider).openNotifySettings(),
+          ),
+
+        if (!hasVoice || canNotify == false)
           const SizedBox(height: Sizes.gap),
-        ],
 
         PillButton.primary(
           icon: Icons.play_arrow_rounded,
@@ -231,6 +252,53 @@ class _Ready extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// One line above Start: the lock screen will be empty, and a tap that fixes
+/// it.
+///
+/// The same words as the notice in settings, said in the space the ready
+/// screen has — which is one line, under a dial, above the only button that
+/// matters. So the explanation goes and the consequence stays, and anyone who
+/// wants the rest of it finds it in settings.
+class _NotifyNotice extends StatelessWidget {
+  const _NotifyNotice({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final style = Theme.of(context).textTheme.bodySmall;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(Sizes.radius),
+      child: Padding(
+        // Enough to be hit without looking, which is the standard everything
+        // else on this screen is held to, without taking a line off the dial.
+        padding: const EdgeInsets.symmetric(vertical: Sizes.gap / 2),
+        child: Text.rich(
+          textAlign: TextAlign.center,
+          TextSpan(
+            style: style?.copyWith(color: colors.danger),
+            children: [
+              const TextSpan(text: 'Notifications are off, so the lock '
+                  'screen will stay empty. '),
+              TextSpan(
+                text: 'Turn them on',
+                style: style?.copyWith(
+                  color: colors.work,
+                  decoration: TextDecoration.underline,
+                  decorationColor: colors.work,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
