@@ -10,6 +10,7 @@ import 'workout.dart';
 extension WorkoutSummary on Workout {
   String get summary {
     if (rounds.isEmpty) return 'Empty';
+    if (kind == TimerKind.focus) return _focusSummary;
 
     final parts = <String>[];
     if (rounds.length == 1) {
@@ -21,6 +22,25 @@ extension WorkoutSummary on Workout {
       parts.add(_plural(rounds.length, 'exercise'));
       if (repeats > 1) parts.add(_plural(repeats, 'set'));
     }
+    return parts.join(' · ');
+  }
+
+  /// The same line for a focus session, in minutes rather than seconds.
+  ///
+  /// Seconds are the right unit for a workout and the wrong one here: nobody
+  /// reads "1500s focus". The long break is named only when there is one,
+  /// because a plain 50/10 does not have one.
+  String get _focusSummary {
+    final round = rounds.first;
+    final parts = [
+      '${round.workSeconds ~/ 60} min',
+      // Only where there is one to take: the break after the last block is
+      // dropped, so a single block has no break however long it is set to.
+      if (round.restSeconds > 0 && repeats > 1)
+        '${round.restSeconds ~/ 60} min break',
+      _plural(repeats, 'block'),
+      if (cooldownSeconds > 0) '${cooldownSeconds ~/ 60} min long break',
+    ];
     return parts.join(' · ');
   }
 

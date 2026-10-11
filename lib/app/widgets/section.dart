@@ -14,15 +14,26 @@ class SectionHeading extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.trailing,
+    this.accent,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
 
+  /// An action belonging to the whole section — adding to the list under it.
+  final Widget? trailing;
+
+  /// The colour of the badge, where the section belongs to something with a
+  /// colour of its own. Defaults to the brand's accent.
+  final Color? accent;
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final colors = context.colors;
+    final badge = accent ?? colors.work;
     return Padding(
       padding: const EdgeInsets.only(
         top: Sizes.bigGap,
@@ -35,12 +46,8 @@ class SectionHeading extends StatelessWidget {
             size: Sizes.badgeTiny,
             // The accent turned right down, not ivory: on a dark screen a
             // pale disc is a hole punched in the page.
-            background: Brand.accentWash,
-            child: Icon(
-              icon,
-              color: context.colors.work,
-              size: Sizes.iconSmall,
-            ),
+            background: colors.washOf(badge),
+            child: Icon(icon, color: badge, size: Sizes.iconSmall),
           ),
           const SizedBox(width: Sizes.gap),
           Expanded(
@@ -57,6 +64,7 @@ class SectionHeading extends StatelessWidget {
               ],
             ),
           ),
+          ?trailing,
         ],
       ),
     );
@@ -74,6 +82,7 @@ class Section extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.children,
+    this.accent,
   });
 
   final IconData icon;
@@ -81,11 +90,20 @@ class Section extends StatelessWidget {
   final String subtitle;
   final List<Widget> children;
 
+  /// The colour of the badge, where the section belongs to something with a
+  /// colour of its own.
+  final Color? accent;
+
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      SectionHeading(icon: icon, title: title, subtitle: subtitle),
+      SectionHeading(
+        icon: icon,
+        title: title,
+        subtitle: subtitle,
+        accent: accent,
+      ),
       Card(
         child: Padding(
           padding: const EdgeInsets.all(Sizes.gutter),

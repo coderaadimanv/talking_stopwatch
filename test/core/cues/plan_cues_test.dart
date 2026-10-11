@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:talking_stopwatch/core/cues/cue.dart';
+import 'package:talking_stopwatch/core/cues/phrase.dart';
 import 'package:talking_stopwatch/core/cues/plan_cues.dart';
 import 'package:talking_stopwatch/core/timeline/timeline.dart';
 import 'package:talking_stopwatch/core/timeline/workout.dart';
@@ -12,6 +13,70 @@ List<Cue> cuesFor(Workout w, {int offsetMs = 0}) =>
     planCues(expand(w), w.cues, offsetMs: offsetMs);
 
 void main() {
+  group('a focus session', () {
+    /// The pomodoro, in the shape the model already has: four blocks of 25
+    /// with 5 between them, and the long break as the cool down, which is the
+    /// only phase that comes after the last block rather than between them.
+    final pomodoro = Workout(
+      id: 'focus',
+      kind: TimerKind.focus,
+      prepareSeconds: 0,
+      rounds: const [Round(workSeconds: 25 * 60, restSeconds: 5 * 60)],
+      repeats: 4,
+      cooldownSeconds: 15 * 60,
+      cues: CueSettings.quiet,
+    );
+
+    test('says one word at each change and nothing else', () {
+      final cues = planCues(
+        expand(pomodoro),
+        pomodoro.cues,
+        phrases: phrasesFor(TimerKind.focus),
+      );
+
+      // Nine cues in two hours and ten minutes. Everything the mode is for is
+      // in this list: no countdown into a block, no halfway through one, no
+      // block numbers — the phase word, and then silence.
+      expect(script(cues), [
+        '0 Focus',
+        '1500000 Break',
+        '1800000 Focus',
+        '3300000 Break',
+        '3600000 Focus',
+        '5100000 Break',
+        '5400000 Focus',
+        '6900000 Long break',
+        '7800000 Done',
+      ]);
+    });
+
+    test('is quiet because of its settings, not because of its words', () {
+      // The same session with the normal settings counts into every change
+      // and calls the halfway. Proof that nothing in the planner knows what a
+      // focus session is: only the switches it was handed.
+      final chatty = planCues(
+        expand(pomodoro),
+        const CueSettings(),
+        phrases: phrasesFor(TimerKind.focus),
+      );
+      expect(chatty.map((c) => c.text), contains('three'));
+      expect(chatty.map((c) => c.text), contains('Halfway'));
+
+      final quiet = planCues(
+        expand(pomodoro),
+        CueSettings.quiet,
+        phrases: phrasesFor(TimerKind.focus),
+      );
+      expect(quiet.map((c) => c.text), isNot(contains('three')));
+      expect(quiet.map((c) => c.text), isNot(contains('Halfway')));
+    });
+
+    test('a workout still speaks with the workout words', () {
+      expect(phrasesFor(TimerKind.workout).phase(SegmentKind.work), 'Go');
+      expect(phrasesFor(TimerKind.focus).phase(SegmentKind.work), 'Focus');
+    });
+  });
+
   group('planCues', () {
     test('speaks the documented script for 30s work, 10s rest, 8 rounds', () {
       final cues = cuesFor(

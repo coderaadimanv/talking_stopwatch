@@ -32,6 +32,11 @@ class EditorScreen extends ConsumerWidget {
 
     final data = ref.read(appDataProvider.notifier);
     final colors = context.colors;
+    // The editor wears what it is editing, so there is never a moment of
+    // editing a focus session on a screen lit like a workout.
+    final accent = workout.kind == TimerKind.focus
+        ? colors.focus
+        : colors.work;
     void edit(Workout Function(Workout) change) => data.editWorkout(id, change);
 
     return Scaffold(
@@ -67,7 +72,7 @@ class EditorScreen extends ConsumerWidget {
       ),
       body: SoftBackground(
         color: Brand.ink,
-        glow: colors.work,
+        glow: accent,
         child: SafeArea(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
@@ -85,11 +90,18 @@ class EditorScreen extends ConsumerWidget {
                     children: [
                       CircleBadge(
                         size: Sizes.badgeSmall,
-                        background: Brand.accentWash,
-                        child: Text(
-                          workout.totalLabel,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(color: colors.work),
+                        background: colors.washOf(accent),
+                        // Scaled, not wrapped. A focus session's total is
+                        // "2:10:00" and wrapping it inside a disc reads as
+                        // "2:10:0 / 0", which throws nothing and looks like
+                        // a bug because it is one.
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            workout.totalLabel,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(color: accent),
+                          ),
                         ),
                       ),
                       const SizedBox(width: Sizes.gap),
@@ -97,9 +109,7 @@ class EditorScreen extends ConsumerWidget {
                         child: TextFormField(
                           key: ValueKey('name-$id'),
                           initialValue: workout.name,
-                          decoration: const InputDecoration(
-                            labelText: 'Name',
-                          ),
+                          decoration: const InputDecoration(labelText: 'Name'),
                           textCapitalization: TextCapitalization.sentences,
                           onChanged: (value) =>
                               edit((w) => w.copyWith(name: value)),
@@ -110,125 +120,197 @@ class EditorScreen extends ConsumerWidget {
                 ),
               ),
 
-              Section(
-                icon: Icons.hourglass_top_rounded,
-                title: 'Warm up',
-                subtitle: workout.prepareSeconds == 0
-                    ? 'Straight in'
-                    : '${workout.prepareSeconds}s before the first round',
-                children: [
-                  NumberRow(
-                    label: 'Get ready',
-                    value: '${workout.prepareSeconds}s',
-                    onChange: (by) => edit(
-                      (w) => w.copyWith(
-                        prepareSeconds: (w.prepareSeconds + by * 5).clamp(
-                          0,
-                          120,
+              // A focus session is four numbers, and the workout editor's
+              // shape is wrong for every one of them: no warm up, no circuit
+              // of exercises, and nothing to decide about what it says
+              // because the script is fixed quiet.
+              if (workout.kind == TimerKind.focus)
+                Section(
+                  icon: Icons.psychology_alt_rounded,
+                  title: 'Blocks',
+                  subtitle: workout.summary,
+                  accent: accent,
+                  children: [
+                    NumberRow(
+                      label: 'Focus',
+                      value: '${workout.rounds.first.workSeconds ~/ 60}m',
+                      onChange: (by) => edit(
+                        (w) => w.copyWith(
+                          rounds: [
+                            w.rounds.first.copyWith(
+                              workSeconds:
+                                  (w.rounds.first.workSeconds + by * 300).clamp(
+                                    300,
+                                    7200,
+                                  ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-
-              // A card each rather than one long box: a round is a thing, and
-              // five of them in one card read as one thing with fifteen rows.
-              SectionHeading(
-                icon: Icons.fitness_center_rounded,
-                title: 'Exercises',
-                subtitle: workout.rounds.length == 1
-                    ? 'One exercise, repeated'
-                    : '${workout.rounds.length} exercises in a circuit',
-              ),
-              for (var i = 0; i < workout.rounds.length; i++) ...[
-                _RoundCard(
-                  key: ValueKey('round-$id-$i'),
-                  index: i,
-                  round: workout.rounds[i],
-                  // One round is the shape of a plain interval; removing the
-                  // last would leave a workout with nothing in it.
-                  onRemove: workout.rounds.length <= 1
-                      ? null
-                      : () => edit(
-                          (w) =>
-                              w.copyWith(rounds: [...w.rounds]..removeAt(i)),
-                        ),
-                  onChange: (round) => edit(
-                    (w) => w.copyWith(rounds: [...w.rounds]..[i] = round),
-                  ),
-                ),
-                const SizedBox(height: Sizes.gap),
-              ],
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: () => edit(
-                    (w) => w.copyWith(
-                      rounds: [
-                        ...w.rounds,
-                        const Round(workSeconds: 30, restSeconds: 10),
-                      ],
-                    ),
-                  ),
-                  icon: const Icon(Icons.add),
-                  label: const ActionLabel('Add an exercise'),
-                ),
-              ),
-
-              Section(
-                icon: Icons.repeat_rounded,
-                title: 'Repeat',
-                subtitle: workout.summary,
-                children: [
-                  NumberRow(
-                    label: workout.rounds.length > 1 ? 'Sets' : 'Rounds',
-                    value: '${workout.repeats}',
-                    onChange: (by) => edit(
-                      (w) => w.copyWith(repeats: (w.repeats + by).clamp(1, 60)),
-                    ),
-                  ),
-                  // Only for a circuit: with one exercise, every repeat is a
-                  // round and Rest already is the pause between them.
-                  if (workout.repeats > 1 && workout.rounds.length > 1)
                     NumberRow(
-                      label: 'Break between sets',
-                      value: '${workout.breakSeconds}s',
+                      label: 'Break',
+                      value: '${workout.rounds.first.restSeconds ~/ 60}m',
                       onChange: (by) => edit(
                         (w) => w.copyWith(
-                          breakSeconds: (w.breakSeconds + by * 15).clamp(
+                          rounds: [
+                            w.rounds.first.copyWith(
+                              restSeconds:
+                                  (w.rounds.first.restSeconds + by * 60).clamp(
+                                    0,
+                                    3600,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    NumberRow(
+                      label: 'Blocks',
+                      value: '${workout.repeats}',
+                      onChange: (by) => edit(
+                        (w) =>
+                            w.copyWith(repeats: (w.repeats + by).clamp(1, 12)),
+                      ),
+                    ),
+                    // After the last block, not between every pair of them —
+                    // which is why it is the cool down underneath.
+                    NumberRow(
+                      label: 'Long break',
+                      value: '${workout.cooldownSeconds ~/ 60}m',
+                      onChange: (by) => edit(
+                        (w) => w.copyWith(
+                          cooldownSeconds: (w.cooldownSeconds + by * 300).clamp(
+                            0,
+                            3600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              else ...[
+                Section(
+                  icon: Icons.hourglass_top_rounded,
+                  title: 'Warm up',
+                  subtitle: workout.prepareSeconds == 0
+                      ? 'Straight in'
+                      : '${workout.prepareSeconds}s before the first round',
+                  children: [
+                    NumberRow(
+                      label: 'Get ready',
+                      value: '${workout.prepareSeconds}s',
+                      onChange: (by) => edit(
+                        (w) => w.copyWith(
+                          prepareSeconds: (w.prepareSeconds + by * 5).clamp(
+                            0,
+                            120,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // A card each rather than one long box: a round is a thing, and
+                // five of them in one card read as one thing with fifteen rows.
+                SectionHeading(
+                  icon: Icons.fitness_center_rounded,
+                  title: 'Exercises',
+                  subtitle: workout.rounds.length == 1
+                      ? 'One exercise, repeated'
+                      : '${workout.rounds.length} exercises in a circuit',
+                ),
+                for (var i = 0; i < workout.rounds.length; i++) ...[
+                  _RoundCard(
+                    key: ValueKey('round-$id-$i'),
+                    index: i,
+                    round: workout.rounds[i],
+                    // One round is the shape of a plain interval; removing the
+                    // last would leave a workout with nothing in it.
+                    onRemove: workout.rounds.length <= 1
+                        ? null
+                        : () => edit(
+                            (w) =>
+                                w.copyWith(rounds: [...w.rounds]..removeAt(i)),
+                          ),
+                    onChange: (round) => edit(
+                      (w) => w.copyWith(rounds: [...w.rounds]..[i] = round),
+                    ),
+                  ),
+                  const SizedBox(height: Sizes.gap),
+                ],
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => edit(
+                      (w) => w.copyWith(
+                        rounds: [
+                          ...w.rounds,
+                          const Round(workSeconds: 30, restSeconds: 10),
+                        ],
+                      ),
+                    ),
+                    icon: const Icon(Icons.add),
+                    label: const ActionLabel('Add an exercise'),
+                  ),
+                ),
+
+                Section(
+                  icon: Icons.repeat_rounded,
+                  title: 'Repeat',
+                  subtitle: workout.summary,
+                  children: [
+                    NumberRow(
+                      label: workout.rounds.length > 1 ? 'Sets' : 'Rounds',
+                      value: '${workout.repeats}',
+                      onChange: (by) => edit(
+                        (w) =>
+                            w.copyWith(repeats: (w.repeats + by).clamp(1, 60)),
+                      ),
+                    ),
+                    // Only for a circuit: with one exercise, every repeat is a
+                    // round and Rest already is the pause between them.
+                    if (workout.repeats > 1 && workout.rounds.length > 1)
+                      NumberRow(
+                        label: 'Break between sets',
+                        value: '${workout.breakSeconds}s',
+                        onChange: (by) => edit(
+                          (w) => w.copyWith(
+                            breakSeconds: (w.breakSeconds + by * 15).clamp(
+                              0,
+                              600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    NumberRow(
+                      label: 'Cool down',
+                      value: '${workout.cooldownSeconds}s',
+                      onChange: (by) => edit(
+                        (w) => w.copyWith(
+                          cooldownSeconds: (w.cooldownSeconds + by * 15).clamp(
                             0,
                             600,
                           ),
                         ),
                       ),
                     ),
-                  NumberRow(
-                    label: 'Cool down',
-                    value: '${workout.cooldownSeconds}s',
-                    onChange: (by) => edit(
-                      (w) => w.copyWith(
-                        cooldownSeconds: (w.cooldownSeconds + by * 15).clamp(
-                          0,
-                          600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
 
-              Section(
-                icon: Icons.record_voice_over_rounded,
-                title: 'What it says',
-                subtitle: _spoken(workout.cues),
-                children: [
-                  _CueSettings(
-                    cues: workout.cues,
-                    onChange: (cues) => edit((w) => w.copyWith(cues: cues)),
-                  ),
-                ],
-              ),
+                Section(
+                  icon: Icons.record_voice_over_rounded,
+                  title: 'What it says',
+                  subtitle: _spoken(workout.cues),
+                  children: [
+                    _CueSettings(
+                      cues: workout.cues,
+                      onChange: (cues) => edit((w) => w.copyWith(cues: cues)),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -276,9 +358,8 @@ class _RoundCard extends StatelessWidget {
                 background: Brand.accentWash,
                 child: Text(
                   '${index + 1}',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: context.colors.work,
-                  ),
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(color: context.colors.work),
                 ),
               ),
               const SizedBox(width: Sizes.gap),

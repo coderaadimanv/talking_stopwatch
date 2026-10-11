@@ -78,6 +78,29 @@ void main() {
       expect(w.summary, '2 exercises');
     });
 
+    test('a focus session is described in minutes, not seconds', () {
+      final w = Workout.focus(
+        focusMinutes: 25,
+        breakMinutes: 5,
+        blocks: 4,
+        longBreakMinutes: 15,
+      );
+      expect(w.summary, '25 min · 5 min break · 4 blocks · 15 min long break');
+      expect(w.totalLabel, '2:10:00');
+    });
+
+    test('one block has no break, whatever the break is set to', () {
+      // The break after the last block is dropped, so promising one on a
+      // single-block session would be describing a phase that never runs.
+      final w = Workout.focus(
+        focusMinutes: 50,
+        breakMinutes: 10,
+        blocks: 1,
+      );
+      expect(w.summary, '50 min · 1 block');
+      expect(w.totalLabel, '50:00');
+    });
+
     test('a workout with no rounds says so instead of breaking', () {
       const w = Workout(id: 'empty', rounds: []);
       expect(w.summary, 'Empty');

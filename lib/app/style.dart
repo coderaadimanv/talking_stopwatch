@@ -300,6 +300,17 @@ class AppColors extends ThemeExtension<AppColors> {
   /// The stopwatch has no phase of its own, so it wears the brand's accent.
   Color get stopwatch => work;
 
+  /// The fill behind a badge or a section icon on a dark screen: the colour,
+  /// turned right down. [Brand.accentWash] is this for the brand's own
+  /// accent; a mode with a colour of its own needs the same treatment of it.
+  Color washOf(Color ground) => ground.withValues(alpha: 0.16);
+
+  /// Focus wears the one cool colour in the set, and that is the point of it:
+  /// terracotta is the colour of a phase that wants you to move, and this
+  /// screen wants the opposite. It is also never used as a ground here — only
+  /// as the arc, the word and the one control that matters.
+  Color get focus => rest;
+
   /// The fill of the one action a screen is really offering. Lit from the
   /// left, so a wide button does not read as a flat slab of colour.
   LinearGradient gradientOn(Color ground) => LinearGradient(

@@ -51,6 +51,17 @@ final canNotifyProvider = FutureProvider.autoDispose<bool?>(
   (ref) => ref.watch(cuePlayerProvider).canNotify(),
 );
 
+/// Whether the phone can be silenced for a session: false when the app has
+/// not been allowed to yet, null where it is not possible at all (see
+/// [CuePlayer.canSilence]).
+///
+/// Asked again whenever something starts watching it, like [canNotifyProvider]
+/// and for the same reason: it is granted on a system screen outside the app
+/// and nothing tells us when.
+final canSilenceProvider = FutureProvider.autoDispose<bool?>(
+  (ref) => ref.watch(cuePlayerProvider).canSilence(),
+);
+
 /// Everything saved, held in memory and written back on every change.
 class AppDataController extends Notifier<AppData> {
   @override
@@ -93,6 +104,21 @@ class AppDataController extends Notifier<AppData> {
     );
     edit((data) => data.copyWith(presets: [...data.presets, workout]));
     return workout;
+  }
+
+  /// The same, for the other mode. A new one starts at the pomodoro, which is
+  /// the shape most people have in mind when they ask for a focus timer.
+  Workout addFocus({String name = 'New focus'}) {
+    final focus = Workout.focus(
+      id: newId(),
+      name: name,
+      focusMinutes: 25,
+      breakMinutes: 5,
+      blocks: 4,
+      longBreakMinutes: 15,
+    );
+    edit((data) => data.copyWith(presets: [...data.presets, focus]));
+    return focus;
   }
 
   /// Copies a workout, so a variation does not have to be typed out again.

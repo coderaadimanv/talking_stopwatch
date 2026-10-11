@@ -87,6 +87,58 @@ void main() {
     expect(data.presets, isNotEmpty, reason: 'should be the defaults');
   });
 
+  test('a focus preset keeps its kind across a save', () async {
+    await store.save(
+      AppData(
+        presets: [
+          Workout(
+            id: 'f1',
+            name: 'Deep work',
+            kind: TimerKind.focus,
+            prepareSeconds: 0,
+            rounds: const [Round(workSeconds: 3000, restSeconds: 600)],
+            repeats: 2,
+            cooldownSeconds: 900,
+            cues: CueSettings.quiet,
+          ),
+        ],
+      ),
+    );
+
+    final back = await store.load();
+    expect(back.presets.single.kind, TimerKind.focus);
+    expect(back.presets.single.cues.countdown, isFalse);
+  });
+
+  test('a preset saved before focus existed reads as a workout', () async {
+    // No migration and no schema bump: the field is simply absent, and absent
+    // means what every preset was before this.
+    await File('${dir.path}/data.json').writeAsString(
+      '{"schema":1,"presets":[{"id":"old","rounds":[{"work":30,"rest":10}],'
+      '"repeats":8}],"settings":{}}',
+    );
+
+    final back = await store.load();
+    expect(back.presets.single.kind, TimerKind.workout);
+  });
+
+  test('a fresh install has something to focus with', () async {
+    final data = await store.load();
+    expect(
+      data.presets.where((p) => p.kind == TimerKind.focus),
+      isNotEmpty,
+    );
+  });
+
+  test('the silence setting survives a round trip, and defaults off', () async {
+    expect((await store.load()).settings.silenceDuringFocus, isFalse);
+
+    await store.save(
+      const AppData(settings: AppSettings(silenceDuringFocus: true)),
+    );
+    expect((await store.load()).settings.silenceDuringFocus, isTrue);
+  });
+
   test('saving leaves no temporary file behind', () async {
     await store.save(const AppData());
     final left = dir.listSync().map((f) => f.uri.pathSegments.last).toList();

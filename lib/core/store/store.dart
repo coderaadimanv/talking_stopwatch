@@ -29,12 +29,14 @@ class AppSettings {
     this.offsetMs = 0,
     this.keepScreenOn = false,
     this.stopwatchAnnounceSeconds = 60,
+    this.silenceDuringFocus = false,
   });
 
   factory AppSettings.fromJson(Map<String, Object?> json) => AppSettings(
     offsetMs: json['offsetMs'] as int? ?? 0,
     keepScreenOn: json['keepScreenOn'] as bool? ?? false,
     stopwatchAnnounceSeconds: json['stopwatchAnnounce'] as int? ?? 60,
+    silenceDuringFocus: json['silenceDuringFocus'] as bool? ?? false,
   );
 
   /// Calibration for output lag. Bluetooth earbuds run 150–300 ms behind and
@@ -49,21 +51,29 @@ class AppSettings {
   /// How often the count-up stopwatch reads the time out. Zero is never.
   final int stopwatchAnnounceSeconds;
 
+  /// Put the phone in Do Not Disturb for a focus session, and take it out
+  /// afterwards. Off by default: silencing someone's phone is not something
+  /// to do because they opened a timer. Android only — no iOS app can.
+  final bool silenceDuringFocus;
+
   AppSettings copyWith({
     int? offsetMs,
     bool? keepScreenOn,
     int? stopwatchAnnounceSeconds,
+    bool? silenceDuringFocus,
   }) => AppSettings(
     offsetMs: offsetMs ?? this.offsetMs,
     keepScreenOn: keepScreenOn ?? this.keepScreenOn,
     stopwatchAnnounceSeconds:
         stopwatchAnnounceSeconds ?? this.stopwatchAnnounceSeconds,
+    silenceDuringFocus: silenceDuringFocus ?? this.silenceDuringFocus,
   );
 
   Map<String, Object?> toJson() => {
     'offsetMs': offsetMs,
     'keepScreenOn': keepScreenOn,
     'stopwatchAnnounce': stopwatchAnnounceSeconds,
+    'silenceDuringFocus': silenceDuringFocus,
   };
 }
 
@@ -87,8 +97,8 @@ class AppData {
     ),
   );
 
-  /// What the app starts life with, so the first screen is usable rather than
-  /// empty: the interval everybody tries first.
+  /// What the app starts life with, so neither mode opens on an empty list:
+  /// the interval everybody tries first, and the pomodoro.
   static AppData get initial => AppData(
     presets: [
       Workout.simple(
@@ -97,6 +107,14 @@ class AppData {
         workSeconds: 30,
         restSeconds: 10,
         rounds: 8,
+      ),
+      Workout.focus(
+        id: 'default-pomodoro',
+        name: '25 / 5 × 4',
+        focusMinutes: 25,
+        breakMinutes: 5,
+        blocks: 4,
+        longBreakMinutes: 15,
       ),
     ],
     settings: AppSettings(keepScreenOn: keepScreenOnByDefault),

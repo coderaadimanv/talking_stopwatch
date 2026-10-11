@@ -10,13 +10,26 @@ import '../../../core/timeline/workout.dart';
 /// What a phase is called on screen. Not the same as what is spoken: the voice
 /// says "go" because it is shorter to hear, the screen says "Work" because it
 /// is clearer to read.
-String phaseLabel(SegmentKind kind) => switch (kind) {
-  SegmentKind.prepare => 'Get ready',
-  SegmentKind.work => 'Work',
-  SegmentKind.rest => 'Rest',
-  SegmentKind.breakBetween => 'Break',
-  SegmentKind.cooldown => 'Cool down',
-};
+String phaseLabel(SegmentKind kind, {TimerKind of = TimerKind.workout}) =>
+    switch (of) {
+      TimerKind.workout => switch (kind) {
+        SegmentKind.prepare => 'Get ready',
+        SegmentKind.work => 'Work',
+        SegmentKind.rest => 'Rest',
+        SegmentKind.breakBetween => 'Break',
+        SegmentKind.cooldown => 'Cool down',
+      },
+      // A focus session has two phases worth naming and the screen says them
+      // quietly. "Cool down" is the long break here: it is the phase after
+      // the last block rather than one between blocks.
+      TimerKind.focus => switch (kind) {
+        SegmentKind.prepare => 'Starting',
+        SegmentKind.work => 'Focus',
+        SegmentKind.rest => 'Break',
+        SegmentKind.breakBetween => 'Long break',
+        SegmentKind.cooldown => 'Long break',
+      },
+    };
 
 /// The line under the phase name.
 ///
@@ -34,6 +47,19 @@ String phaseCaption(Segment segment) {
     SegmentKind.breakBetween => 'TAKE A BREATHER',
     SegmentKind.cooldown => 'EASE DOWN',
   };
+}
+
+/// What the notification says under the title.
+///
+/// In the mode's own words: a focus session on the lock screen saying
+/// "Work · round 1" would be the one place the app forgot which of the two it
+/// was running.
+String notificationText(Segment? segment, TimerKind kind) {
+  if (segment == null) return 'Done';
+  final label = phaseLabel(segment.kind, of: kind);
+  if (segment.kind != SegmentKind.work || segment.index <= 0) return label;
+  final unit = kind == TimerKind.focus ? 'block' : 'round';
+  return '$label · $unit ${segment.index}';
 }
 
 class RunState {
@@ -142,6 +168,11 @@ class RunController extends Notifier<RunState> {
     await player.askToNotify();
     await player.describe(_title, 'Starting');
     if (data.settings.keepScreenOn) await player.keepAwake(true);
+    // Focus only, and only when asked for. A workout wants to be heard over
+    // music, not to silence the phone it is playing from.
+    if (_workout.kind == TimerKind.focus && data.settings.silenceDuringFocus) {
+      await player.silence(true);
+    }
 
     // Rendering the phrases happens inside start(), and on a first run it can
     // take a few seconds, so the screen says what it is waiting for.
@@ -176,7 +207,11 @@ class RunController extends Notifier<RunState> {
     _stopTicking();
     _described = '';
     ref.read(appDataProvider.notifier).setRunning(null);
-    await ref.read(cuePlayerProvider).keepAwake(false);
+    final player = ref.read(cuePlayerProvider);
+    await player.keepAwake(false);
+    // Unconditional, and harmless when nothing was silenced: the platform
+    // only gives back what it wrote down.
+    await player.silence(false);
     _refresh();
   }
 
@@ -213,19 +248,16 @@ class RunController extends Notifier<RunState> {
     if (session.status == SessionStatus.finished) {
       _stopTicking();
       ref.read(appDataProvider.notifier).setRunning(null);
-      ref.read(cuePlayerProvider).keepAwake(false);
+      ref.read(cuePlayerProvider)
+        ..keepAwake(false)
+        ..silence(false);
     }
   }
 
   /// Keeps the notification honest as the phases change, so a glance at the
   /// lock screen says something true.
   void _describe(SessionState session) {
-    final segment = session.segment;
-    final text = segment == null
-        ? 'Done'
-        : segment.kind == SegmentKind.work && segment.index > 0
-              ? '${phaseLabel(segment.kind)} · round ${segment.index}'
-              : phaseLabel(segment.kind);
+    final text = notificationText(session.segment, _workout.kind);
     if (text == _described) return;
     _described = text;
     ref.read(cuePlayerProvider).describe(_title, text);

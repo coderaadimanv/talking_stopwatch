@@ -222,6 +222,43 @@ A badge on a dark screen is filled with `Brand.accentWash` — the accent turned
 right down — not with ivory. A pale disc on a dark page is a hole punched in
 it.
 
+## The two modes, and why one of them is almost free
+
+A **focus session is a `Workout`**. Twenty-five minutes on, five off, four
+times, with a long break at the end is one `Round` with `repeats: 4` and the
+long break as the **cool down** — the one phase that comes after the last
+block rather than between every pair of them. `expand()`, `planCues()`,
+`Session`, the foreground service and the iOS engine all run it unchanged.
+
+`TimerKind` on `Workout` is the one field the app branches on, and the model
+itself never reads it. What it decides:
+
+- **The script.** `CueSettings.quiet` — one word as each phase begins and
+  nothing else. **Nothing in `core/cues/` knows a focus session exists**: this
+  is the script the existing rules already produce with the switches off. Keep
+  it that way.
+- **The words.** `phrasesFor(kind)` in `core/cues/phrase.dart`: "Focus",
+  "Break", "Long break". `Session.load()` is the only place that asks.
+- **The screen.** `features/focus/` over the *same* `RunController` — the same
+  session, pause, resume, skip and Stop from the lock screen. Two screens, one
+  controller, and only the drawing differs.
+- **Where it opens.** `startLocation()` in `app/router.dart`, because a
+  session outlives the UI and a focus session restored onto the run screen
+  would be the right session drawn in the loudest way there is.
+
+The focus screen is the run screen's opposite and every difference is
+deliberate: the ground stays dark instead of flooding with the phase colour,
+the dial's face is dark instead of pale, the number is smaller, and there is
+no badge, no tracker and no caption. A phase colour is information for someone
+across a gym; for someone at a desk it is a light left on. The phase is worth
+exactly one quiet word.
+
+A focus block is twenty-five minutes, so `TimerService` holds its partial wake
+lock for **two hours** to deliver nine cues. That is the known cost of this
+mode and it has not been measured on a real phone yet. If it turns out to be
+too much, the alternative is `AlarmManager.setExactAndAllowWhileIdle` per cue,
+which is a real change to `CueEngine` and needs its own decision.
+
 ## The two platforms stay alive in completely different ways
 
 The contract is identical and the implementations have almost nothing in
@@ -242,6 +279,20 @@ free.
 
 Two more differences worth knowing:
 
+- Do Not Disturb is Android only, and not because iOS has not been written
+  yet: **no iOS app can turn a Focus on.** `canSilence` answers null there,
+  which is what keeps the switch off the focus screen rather than showing one
+  that could never work. False means "not allowed yet"; null means "not
+  possible". The two are never the same thing.
+- **The phone's quiet is borrowed, and giving it back is the whole feature.**
+  `TimerService` writes down the filter that was in place — with `commit()`,
+  not `apply()` — and restores it in `onDestroy`, on the same lifecycle as the
+  wake lock. `onDestroy` does not run when the process is force-stopped, so
+  `restoreIfStranded()` checks on the next start: a phone left silent for a
+  week because a timer died is the worst thing this app could do. Both halves
+  are proven on a device, including the stranding.
+- `INTERRUPTION_FILTER_PRIORITY`, never `NONE`: an alarm should still reach
+  someone who fell asleep over their work.
 - Android's lock-screen controls are the service's notification. iOS's are
   `MPNowPlayingInfoCenter` and `MPRemoteCommandCenter` — the system's own
   playback controls. `askToNotify`, `canNotify` and `openNotifySettings` are

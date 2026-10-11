@@ -5,11 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../../app/providers.dart';
 import '../../../app/style.dart';
 import '../../../app/widgets/circle_badge.dart';
+import '../../../app/widgets/section.dart';
 import '../../../app/widgets/soft_background.dart';
 import '../../../core/timeline/summary.dart';
 import '../../../core/timeline/workout.dart';
 
-/// Home: the workouts you have saved, and the stopwatch.
+/// Home: the workouts you have saved, the focus sessions, and the stopwatch.
 ///
 /// Dark rather than coloured, unlike the screens it opens into. A phase colour
 /// is information — it says which phase you are in from across a room — and
@@ -24,6 +25,22 @@ class PresetsScreen extends ConsumerWidget {
     final presets = ref.watch(appDataProvider).presets;
     final data = ref.read(appDataProvider.notifier);
     final colors = context.colors;
+
+    final workouts = [
+      for (final p in presets)
+        if (p.kind == TimerKind.workout) p,
+    ];
+    final focus = [
+      for (final p in presets)
+        if (p.kind == TimerKind.focus) p,
+    ];
+
+    /// Opens a preset in whichever screen belongs to it. The same controller
+    /// runs both, so this is only a choice of how it is drawn.
+    void open(Workout preset) {
+      ref.read(selectedWorkoutIdProvider.notifier).select(preset.id);
+      context.go(preset.kind == TimerKind.focus ? '/focus' : '/run');
+    }
 
     return Scaffold(
       backgroundColor: Brand.ink,
@@ -45,27 +62,53 @@ class PresetsScreen extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(
               Sizes.gutter,
-              Sizes.gap,
+              0,
               Sizes.gutter,
-              // Clear of the button that floats over the bottom of the list.
-              Sizes.bigControl + Sizes.bigGap,
+              Sizes.bigGap,
             ),
             children: [
-              for (final workout in presets) ...[
+              // Two lists rather than one, and a "new" on each heading rather
+              // than a single button floating over the bottom: with two kinds
+              // of preset, one New has nothing to say about which kind it
+              // would make.
+              SectionHeading(
+                icon: Icons.fitness_center_rounded,
+                title: 'Workouts',
+                subtitle: 'Counted out loud',
+                trailing: _Add(
+                  tooltip: 'New workout',
+                  onPressed: () => context.go('/edit/${data.addWorkout().id}'),
+                ),
+              ),
+              for (final workout in workouts) ...[
                 _WorkoutCard(
                   workout: workout,
-                  onRun: () {
-                    ref
-                        .read(selectedWorkoutIdProvider.notifier)
-                        .select(workout.id);
-                    context.go('/run');
-                  },
+                  onRun: () => open(workout),
                   onEdit: () => context.go('/edit/${workout.id}'),
                 ),
                 const SizedBox(height: Sizes.gap),
               ],
 
-              const SizedBox(height: Sizes.gap),
+              SectionHeading(
+                icon: Icons.psychology_alt_rounded,
+                title: 'Focus',
+                subtitle: 'One word, then quiet',
+                accent: colors.focus,
+                trailing: _Add(
+                  tooltip: 'New focus session',
+                  onPressed: () => context.go('/edit/${data.addFocus().id}'),
+                ),
+              ),
+              for (final session in focus) ...[
+                _WorkoutCard(
+                  workout: session,
+                  onRun: () => open(session),
+                  onEdit: () => context.go('/edit/${session.id}'),
+                ),
+                const SizedBox(height: Sizes.gap),
+              ],
+
+              const SizedBox(height: Sizes.bigGap),
               _StopwatchCard(
                 onTap: () => context.go('/stopwatch'),
                 accent: colors.stopwatch,
@@ -74,13 +117,24 @@ class PresetsScreen extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/edit/${data.addWorkout().id}'),
-        icon: const Icon(Icons.add),
-        label: const Text('New'),
-      ),
     );
   }
+}
+
+/// The "new" on a section heading.
+class _Add extends StatelessWidget {
+  const _Add({required this.tooltip, required this.onPressed});
+
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    onPressed: onPressed,
+    tooltip: tooltip,
+    style: chipIconButton(),
+    icon: const Icon(Icons.add),
+  );
 }
 
 class _WorkoutCard extends ConsumerWidget {
@@ -99,8 +153,11 @@ class _WorkoutCard extends ConsumerWidget {
     final colors = context.colors;
     final text = Theme.of(context).textTheme;
 
-    // A workout wears the colour of the phase it is mostly made of.
-    final ground = colors.work;
+    // A workout wears the colour of the phase it is mostly made of; a focus
+    // session wears the mode's own.
+    final ground = workout.kind == TimerKind.focus
+        ? colors.focus
+        : colors.work;
 
     return Card(
       child: InkWell(
@@ -114,10 +171,16 @@ class _WorkoutCard extends ConsumerWidget {
               // what anyone checks before committing to it.
               CircleBadge(
                 size: Sizes.badgeSmall,
-                background: Brand.accentWash,
-                child: Text(
-                  workout.totalLabel,
-                  style: text.titleMedium?.copyWith(color: ground),
+                background: colors.washOf(ground),
+                // Scaled rather than sized: a workout's total is "5:20" and a
+                // focus session's is "2:10:00", and both have to sit in the
+                // same disc.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    workout.totalLabel,
+                    style: text.titleMedium?.copyWith(color: ground),
+                  ),
                 ),
               ),
               const SizedBox(width: Sizes.gap),
