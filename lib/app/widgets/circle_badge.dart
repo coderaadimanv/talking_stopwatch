@@ -13,6 +13,7 @@ class CircleBadge extends StatelessWidget {
     required this.background,
     required this.child,
     this.size = Sizes.badge,
+    this.ring,
   });
 
   // Not const: the icon is built from arguments.
@@ -22,10 +23,16 @@ class CircleBadge extends StatelessWidget {
     required IconData icon,
     required Color color,
     this.size = Sizes.badge,
+    this.ring,
   }) : child = Icon(icon, color: color, size: Sizes.bigIcon);
 
   final Color background;
   final double size;
+
+  /// An outline around it. On a dark screen a washed fill alone can be too
+  /// faint to find; the ring gives it an edge.
+  final Color? ring;
+
   final Widget child;
 
   @override
@@ -33,7 +40,13 @@ class CircleBadge extends StatelessWidget {
     width: size,
     height: size,
     alignment: Alignment.center,
-    decoration: BoxDecoration(color: background, shape: BoxShape.circle),
+    decoration: BoxDecoration(
+      color: background,
+      shape: BoxShape.circle,
+      border: ring == null
+          ? null
+          : Border.all(color: ring!, width: Sizes.hairline),
+    ),
     child: child,
   );
 }
