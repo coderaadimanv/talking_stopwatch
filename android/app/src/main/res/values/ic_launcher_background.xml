@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- The brand's ink. Named here rather than inline because the adaptive
-         icon's two layers are declared in separate files. -->
-    <color name="ic_launcher_background">#171513</color>
-</resources>

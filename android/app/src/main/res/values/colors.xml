@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The brand's ink, for the two things Android draws before Flutter has
+         drawn anything: the launcher icon's background layer and the window
+         behind the splash. Kept here because `lib/app/style.dart` cannot
+         reach either of them. -->
+    <color name="ink">#171513</color>
+</resources>
