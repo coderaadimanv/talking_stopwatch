@@ -38,7 +38,7 @@ void main() {
     );
   });
 
-  test('sizes are named only in style.dart', () {
+  test('sizes are numbers only in style.dart', () {
     const allowed = ['app/style.dart'];
     final offenders = <String>[];
     for (final file in sources) {
@@ -47,8 +47,11 @@ void main() {
       for (var i = 0; i < lines.length; i++) {
         final line = lines[i];
         if (line.trimLeft().startsWith('//')) continue;
+        // A literal is the offence, not the property. `iconSize: Sizes.icon`
+        // is the rule working; `iconSize: 28` is a size invented on the spot.
         if (RegExp(
-          r'\b(iconSize|minTileHeight|minimumSize|fontSize)\s*:',
+          r'\b(iconSize|minTileHeight|minimumSize|fontSize|height|width|size)'
+          r'\s*:\s*(const\s+)?(Size\s*\(\s*)?[\d.]+',
         ).hasMatch(line)) {
           offenders.add('${file.path}:${i + 1}  ${line.trim()}');
         }

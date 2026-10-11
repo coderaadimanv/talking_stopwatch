@@ -187,6 +187,25 @@ Two Android details that the app depends on and that are easy to undo:
 the future while `Session` pins it to the moment of the call, so anything else
 is the display and the voice disagreeing by exactly that much.
 
+## The running screens
+
+The run screen and the stopwatch share one language, and it is worth keeping:
+a soft coloured ground, a badge and name at the top, a **dial** carrying the
+time with the progress drawn around its edge, three round controls, and a
+tracker along the foot. The pieces live in `lib/app/widgets/`.
+
+The number sits on the dial's pale face rather than on the colour, and that is
+not decoration — it is where it gets its contrast. The heading and caption are
+the parts that can afford to be softer.
+
+Two rules the dial follows: it shrinks to the **height** it is given as well as
+the width, so a short phone loses dial rather than controls; and the arc is
+**elapsed**, drawn clockwise from noon. The stopwatch's arc sweeps once a
+minute instead, because a count-up has no end to show progress towards.
+
+This is the only screen allowed a shadow — see `Shadows` in `style.dart` for
+why. Everything else in the app stays flat.
+
 ## The stopwatch is the exception to "nothing ticks"
 
 A workout has an end, so its whole script goes down in one call and the app can

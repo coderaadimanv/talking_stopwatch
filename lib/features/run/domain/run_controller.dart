@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/session/session.dart';
+import '../../../core/timeline/timeline.dart';
 import '../../../core/timeline/workout.dart';
 
 /// What a phase is called on screen. Not the same as what is spoken: the voice
@@ -16,6 +17,24 @@ String phaseLabel(SegmentKind kind) => switch (kind) {
   SegmentKind.breakBetween => 'Break',
   SegmentKind.cooldown => 'Cool down',
 };
+
+/// The line under the phase name.
+///
+/// An exercise's own name if it has one, because that is the most useful thing
+/// the screen can say; otherwise a word about the phase, which at least tells
+/// you the screen is alive.
+String phaseCaption(Segment segment) {
+  if (segment.kind == SegmentKind.work && segment.label.isNotEmpty) {
+    return segment.label.toUpperCase();
+  }
+  return switch (segment.kind) {
+    SegmentKind.prepare => 'GET SET',
+    SegmentKind.work => 'KEEP GOING',
+    SegmentKind.rest => 'BREATHE',
+    SegmentKind.breakBetween => 'TAKE A BREATHER',
+    SegmentKind.cooldown => 'EASE DOWN',
+  };
+}
 
 class RunState {
   const RunState({required this.session, this.preparing = false});

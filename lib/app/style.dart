@@ -29,6 +29,32 @@ abstract final class Brand {
   static const surface = Color(0xFF25211E); // 12% taupe
   static const raised = Color(0xFF3F3731); //  34% taupe
   static const line = Color(0xFF544A41); //   52% taupe
+
+  /// The soft shapes behind a running phase: the same colour as the ground,
+  /// lifted or dropped a little. Kept this faint on purpose — they should
+  /// give the screen depth and never be noticed as shapes.
+  static const veilLight = Color(0x18FFFFFF);
+  static const veilDark = Color(0x12000000);
+
+  static const transparent = Color(0x00000000);
+}
+
+/// The one place the app is allowed a shadow.
+///
+/// The brand is flat, and most of this app still is: buttons in a form, cards,
+/// list rows. The running screen is the exception. It is read at a glance from
+/// a distance, and lifting the dial and the primary control off the ground is
+/// what separates them from it at that distance.
+abstract final class Shadows {
+  /// Under the dial: wide, soft and low-contrast.
+  static const dial = [
+    BoxShadow(color: Color(0x26000000), blurRadius: 28, offset: Offset(0, 10)),
+  ];
+
+  /// Under the primary control: tighter, so it reads as pressable.
+  static const control = [
+    BoxShadow(color: Color(0x33000000), blurRadius: 14, offset: Offset(0, 6)),
+  ];
 }
 
 /// The colour of each phase on the run screen.
@@ -91,6 +117,37 @@ abstract final class Sizes {
 
   static const icon = 24.0;
   static const bigIcon = 32.0;
+
+  // --- the running screen -------------------------------------------------
+
+  /// The dial grows with the screen, up to this.
+  static const dialMax = 320.0;
+
+  /// How much of the screen's width the dial may take.
+  static const dialFraction = 0.80;
+
+  /// The progress arc around the dial.
+  static const dialStroke = 14.0;
+
+  /// The countdown inside the dial, as a share of the dial's width. Scaled
+  /// rather than fixed, so it stays right on a small phone and a large one.
+  static const dialTextFraction = 0.26;
+
+  /// The circular badge above the phase name.
+  static const badge = 72.0;
+
+  /// The round controls at the foot of the running screen.
+  static const circleControl = 64.0;
+  static const circleControlBig = 88.0;
+
+  /// A dot in the round tracker.
+  static const dot = 10.0;
+
+  /// The small icon inside a chip.
+  static const chipIcon = 16.0;
+
+  /// Beyond this many rounds the dots become a bar: forty dots say nothing.
+  static const maxDots = 12;
 
   /// The corner on every button, card and control.
   ///
@@ -158,6 +215,40 @@ class AppColors extends ThemeExtension<AppColors> {
 
   final Color danger;
 
+  // The three colours any coloured screen needs: a pale face to sit things
+  // on, a deeper cut for what should catch the eye, and whatever reads on
+  // top. Taken against a colour rather than a phase, because the stopwatch
+  // has no phase and wears the brand's accent instead.
+
+  /// The pale face of a dial, a badge or a quiet control. Tinted towards the
+  /// colour it sits on rather than plain ivory, so it belongs to that screen.
+  Color faceOn(Color ground) => Color.lerp(Brand.ivory, ground, 0.12)!;
+
+  /// Whatever reads on [ground]: ink or ivory, whichever has more contrast.
+  Color readableOn(Color ground) => _readableOn(ground);
+
+  /// The pale face of the dial, the badge and the quiet controls.
+  Color phaseFace(SegmentKind kind) => faceOn(phase(kind));
+
+  /// A deeper cut of the phase, for the progress arc and the primary control.
+  ///
+  /// Darkened and *enriched*, not mixed towards ink. Mixing towards ink drains
+  /// the colour out as it darkens and leaves a muddy brown where the arc
+  /// should be the liveliest thing on the screen; pulling the lightness down
+  /// while pushing the saturation up keeps the hue burning.
+  ///
+  /// Derived rather than listed, so a phase colour is still changed in one
+  /// place and its deeper cut follows.
+  Color deepOf(Color ground) {
+    final hsl = HSLColor.fromColor(ground);
+    return hsl
+        .withLightness((hsl.lightness * 0.78).clamp(0.0, 1.0))
+        .withSaturation((hsl.saturation + 0.22).clamp(0.0, 1.0))
+        .toColor();
+  }
+
+  Color phaseDeep(SegmentKind kind) => deepOf(phase(kind));
+
   /// The colour the whole run screen takes while [kind] is running.
   Color phase(SegmentKind kind) => switch (kind) {
     SegmentKind.prepare => prepare,
@@ -166,6 +257,12 @@ class AppColors extends ThemeExtension<AppColors> {
     SegmentKind.breakBetween => breakBetween,
     SegmentKind.cooldown => cooldown,
   };
+
+  /// What to draw on top of the deeper cut — the arc, the primary control.
+  Color onPhaseDeep(SegmentKind kind) => _readableOn(phaseDeep(kind));
+
+  /// The stopwatch has no phase of its own, so it wears the brand's accent.
+  Color get stopwatch => work;
 
   /// What to draw on top of a phase colour.
   ///
@@ -211,6 +308,18 @@ class AppColors extends ThemeExtension<AppColors> {
     );
   }
 }
+
+/// The icon on the badge above the phase name.
+///
+/// Lives here with the phase colours because it is the same job: saying which
+/// phase you are in without being read.
+IconData phaseIcon(SegmentKind kind) => switch (kind) {
+  SegmentKind.prepare => Icons.hourglass_top_rounded,
+  SegmentKind.work => Icons.fitness_center_rounded,
+  SegmentKind.rest => Icons.self_improvement_rounded,
+  SegmentKind.breakBetween => Icons.local_cafe_rounded,
+  SegmentKind.cooldown => Icons.spa_rounded,
+};
 
 /// Ink or ivory, whichever can actually be read on [background].
 Color _readableOn(Color background) =>
