@@ -65,7 +65,11 @@ class PlatformCuePlayer implements CuePlayer {
   }
 
   @override
-  Future<void> schedule(List<Cue> cues, {int leadMs = 250}) async {
+  Future<void> schedule(
+    List<Cue> cues, {
+    int leadMs = 0,
+    bool countUp = false,
+  }) async {
     if (cues.isEmpty) return;
     // Two parallel lists rather than a list of maps: it crosses the channel as
     // two primitive arrays instead of several hundred small dictionaries.
@@ -75,6 +79,7 @@ class PlatformCuePlayer implements CuePlayer {
       'leadMs': leadMs,
       'title': _title,
       'text': _text,
+      'countUp': countUp,
     });
   }
 

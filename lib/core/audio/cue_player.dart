@@ -24,7 +24,10 @@ abstract class CuePlayer {
   ///
   /// [leadMs] is a head start before cue time zero. Replaces any schedule
   /// already armed.
-  Future<void> schedule(List<Cue> cues, {int leadMs});
+  ///
+  /// [countUp] is about the notification only: a workout counts down to its
+  /// end, a stopwatch counts up from its start and has no end to count to.
+  Future<void> schedule(List<Cue> cues, {int leadMs, bool countUp});
 
   /// Drops everything armed and ends the session.
   Future<void> cancel();
@@ -68,6 +71,9 @@ class FakeCuePlayer implements CuePlayer {
   final List<List<Cue>> warmed = [];
   final List<String> descriptions = [];
   final List<bool> awake = [];
+
+  /// Whether each schedule asked for a counting-up notification.
+  final List<bool> countUps = [];
   int cancels = 0;
   int asks = 0;
   int? fakeElapsedMs;
@@ -82,8 +88,14 @@ class FakeCuePlayer implements CuePlayer {
   Future<void> warm(List<Cue> cues) async => warmed.add(List.of(cues));
 
   @override
-  Future<void> schedule(List<Cue> cues, {int leadMs = 0}) async =>
-      schedules.add(List.of(cues));
+  Future<void> schedule(
+    List<Cue> cues, {
+    int leadMs = 0,
+    bool countUp = false,
+  }) async {
+    schedules.add(List.of(cues));
+    countUps.add(countUp);
+  }
 
   @override
   Future<void> cancel() async => cancels++;

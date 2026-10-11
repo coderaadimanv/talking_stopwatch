@@ -62,6 +62,7 @@ class MainActivity : FlutterActivity() {
                     (call.argument<Int>("leadMs") ?: 250).toLong(),
                     call.argument<String>("title") ?: "Workout",
                     call.argument<String>("text") ?: "",
+                    countUp = call.argument<Boolean>("countUp") ?: false,
                 )
                 result.success(startedAt)
             }
