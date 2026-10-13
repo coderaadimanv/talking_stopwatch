@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cadent/app/style.dart';
+import 'package:cadent/core/cues/sound_settings.dart';
 import 'package:cadent/core/store/store.dart';
 import 'package:cadent/core/timeline/workout.dart';
 
@@ -152,6 +153,32 @@ void main() {
     // has to open, and it has to open looking like something.
     expect(AppColors.byId('aurora'), same(AppColors.rust));
     expect(AppColors.byId(''), same(AppColors.rust));
+  });
+
+  test('the sound settings survive a round trip, and default to the voice', () async {
+    // The default matters more than usual here: every phone that has the app
+    // already has a file with no 'sounds' in it, and it has to keep talking.
+    expect((await store.load()).settings.sounds, const SoundSettings());
+
+    await store.save(
+      const AppData(
+        settings: AppSettings(
+          sounds: SoundSettings(
+            phase: SoundMode.both,
+            countdown: SoundMode.tone,
+          ),
+        ),
+      ),
+    );
+    final sounds = (await store.load()).settings.sounds;
+    expect(sounds.phase, SoundMode.both);
+    expect(sounds.countdown, SoundMode.tone);
+    expect(sounds.halfway, SoundMode.voice);
+  });
+
+  test('a sound mode this build has never heard of reads as the voice', () {
+    expect(SoundMode.byName('whistle'), SoundMode.voice);
+    expect(SoundMode.byName(null), SoundMode.voice);
   });
 
   test('saving leaves no temporary file behind', () async {

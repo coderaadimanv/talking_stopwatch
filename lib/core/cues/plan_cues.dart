@@ -2,6 +2,8 @@ import '../timeline/timeline.dart';
 import '../timeline/workout.dart';
 import 'cue.dart';
 import 'phrase.dart';
+import 'sound_settings.dart';
+import 'tone.dart';
 
 /// Two cues closer together than this are the same moment as far as a listener
 /// is concerned, so only the more important one is spoken.
@@ -13,6 +15,15 @@ const _countdownHeadroomMs = 2000;
 
 /// Below this, "halfway" is noise rather than information.
 const _halfwayFloorMs = 20000;
+
+/// How far a tone leads the word it introduces, under [SoundMode.both].
+///
+/// The word may not move: it is what the countdown on the screen is agreeing
+/// with, and the whole app is built around the two staying together. So the
+/// tone goes earlier instead — by exactly [minCueGapMs], which is both the
+/// smallest lead that survives [resolveCollisions] and the smallest gap at
+/// which a listener hears two sounds rather than one muddle.
+const toneLeadMs = minCueGapMs;
 
 /// Works out everything the app will say for one session, in advance.
 ///
@@ -28,6 +39,7 @@ List<Cue> planCues(
   CueSettings settings, {
   int offsetMs = 0,
   Phrases phrases = const Phrases(),
+  SoundSettings sounds = const SoundSettings(),
 }) {
   if (timeline.isEmpty) return const [];
 
@@ -36,11 +48,13 @@ List<Cue> planCues(
 
   for (final segment in timeline.segments) {
     if (settings.phaseWords) {
-      cues.add(
-        Cue(
+      cues.addAll(
+        _sounded(
           atMs: segment.startMs,
           text: _phaseText(segment, settings, phrases),
+          tone: Tone.forPhase(segment.kind),
           priority: CuePriority.phaseWord,
+          mode: sounds.phase,
         ),
       );
     }
@@ -48,11 +62,13 @@ List<Cue> planCues(
     if (settings.halfway &&
         segment.kind == SegmentKind.work &&
         segment.durationMs >= _halfwayFloorMs) {
-      cues.add(
-        Cue(
+      cues.addAll(
+        _sounded(
           atMs: segment.startMs + segment.durationMs ~/ 2,
           text: phrases.halfway,
+          tone: Tone.halfway,
           priority: CuePriority.halfway,
+          mode: sounds.halfway,
         ),
       );
     }
@@ -63,22 +79,26 @@ List<Cue> planCues(
     if (settings.countdown &&
         segment.durationMs >= from * 1000 + _countdownHeadroomMs) {
       for (var n = from; n >= 1; n--) {
-        cues.add(
-          Cue(
+        cues.addAll(
+          _sounded(
             atMs: segment.endMs - n * 1000,
             text: phrases.count(n),
+            tone: Tone.tick,
             priority: CuePriority.countdown,
+            mode: sounds.countdown,
           ),
         );
       }
     }
   }
 
-  cues.add(
-    Cue(
+  cues.addAll(
+    _sounded(
       atMs: timeline.totalMs,
       text: phrases.done,
+      tone: Tone.done,
       priority: CuePriority.phaseWord,
+      mode: sounds.phase,
     ),
   );
 
@@ -96,6 +116,34 @@ List<Cue> remainingFrom(List<Cue> cues, int elapsedMs) => [
   for (final c in cues)
     if (c.atMs >= elapsedMs) c.shiftedBy(-elapsedMs),
 ];
+
+/// One moment of the script, in however many sounds [mode] asks for.
+///
+/// The only place in the app that knows a cue can be a tone. Everything above
+/// it decides *when* something happens and everything below it plays a named
+/// clip, so this is the whole of the feature in one function.
+Iterable<Cue> _sounded({
+  required int atMs,
+  required String text,
+  required Tone tone,
+  required CuePriority priority,
+  required SoundMode mode,
+}) sync* {
+  // The tone leads, so it is emitted first — but only where there is room for
+  // it. Before the session has started there is none, and a tone clamped to
+  // zero would land on top of the word it was meant to introduce and one of
+  // the two would be thrown away. The word is the one worth keeping.
+  if (mode.hasTone && !(mode == SoundMode.both && atMs < toneLeadMs)) {
+    yield Cue(
+      atMs: mode == SoundMode.both ? atMs - toneLeadMs : atMs,
+      tone: tone,
+      priority: priority,
+    );
+  }
+  if (mode.hasVoice) {
+    yield Cue(atMs: atMs, text: text, priority: priority);
+  }
+}
 
 /// The sentence spoken as a phase begins, qualifier included.
 String _phaseText(Segment segment, CueSettings settings, Phrases phrases) {

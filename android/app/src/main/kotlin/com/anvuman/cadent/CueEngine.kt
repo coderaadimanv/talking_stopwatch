@@ -106,16 +106,31 @@ object CueEngine {
     }
 
     /**
-     * Renders anything new and loads every clip into memory, then calls back.
+     * Renders anything new, puts the bundled tones in beside it, loads every
+     * clip into memory, then calls back.
      *
      * Dart awaits this before starting, which is what buys the right to be
      * exact afterwards: by the time the first cue is due there is nothing left
      * to decode, allocate or ask the speech engine for.
+     *
+     * A tone needs no speech engine, so a phone with no voice at all can still
+     * run a session in tone mode — the render step fails every phrase, and the
+     * tones go in and play regardless.
      */
-    fun warm(phrases: Map<String, String>, callback: (List<String>) -> Unit) {
+    fun warm(
+        phrases: Map<String, String>,
+        tones: Map<String, ByteArray>,
+        callback: (List<String>) -> Unit,
+    ) {
         val renderer = this.renderer ?: return callback(phrases.keys.toList())
         renderer.render(phrases) { failedKeys ->
-            load(phrases.keys - failedKeys.toSet()) { callback(failedKeys) }
+            // After rendering, never before: rendering is what notices the
+            // phone's voice has changed and drops the whole cache, and a tone
+            // written ahead of that would be deleted on the way past.
+            renderer.install(tones)
+            load((phrases.keys - failedKeys.toSet()) + tones.keys) {
+                callback(failedKeys)
+            }
         }
     }
 

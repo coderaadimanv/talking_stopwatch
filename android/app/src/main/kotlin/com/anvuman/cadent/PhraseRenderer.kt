@@ -51,6 +51,38 @@ class PhraseRenderer(private val context: Context) {
 
     fun fileFor(key: String): File = File(dir, "$key.wav")
 
+    /**
+     * Puts a bundled clip into the cache, so that from here on it is
+     * indistinguishable from a rendered phrase.
+     *
+     * That is the whole trick behind tone mode: the cue engine loads clips by
+     * name and plays them by name, so a tone only has to arrive in the same
+     * place under the same sort of name and nothing downstream learns it
+     * exists.
+     *
+     * Not lifted by [Loudness], and not because it is skipped — the tones are
+     * made at the level the lift targets, so measuring one gives a gain of
+     * about 1.00 and it would be left alone anyway. Writing them straight to
+     * disk just saves the arithmetic.
+     *
+     * Already-present clips are left alone: a session starts with this call,
+     * and rewriting six files every time would be work for nothing.
+     */
+    fun install(clips: Map<String, ByteArray>) {
+        for ((key, bytes) in clips) {
+            val file = fileFor(key)
+            if (file.exists() && file.length() == bytes.size.toLong()) continue
+            try {
+                val temp = File(dir, "$key.wav.tmp")
+                temp.writeBytes(bytes)
+                if (!temp.renameTo(file)) temp.delete()
+            } catch (_: java.io.IOException) {
+                // A tone we cannot write is a cue that stays silent, which is
+                // the same way every other failure in here is handled.
+            }
+        }
+    }
+
     /** Whether this phone has a voice at all. Without one the app stays silent. */
     fun available(callback: (Boolean) -> Unit) = whenReady {
         callback(ready == true && tts?.voice != null)
@@ -121,7 +153,12 @@ class PhraseRenderer(private val context: Context) {
 
     /** Keeps the cache small enough to ignore: oldest files go first. */
     private fun trimCache(limitBytes: Long = 5L * 1024 * 1024) {
-        val files = dir.listFiles { f: File -> f.name.endsWith(".wav") } ?: return
+        // Tones are exempt. They are a hundred kilobytes in total, they are
+        // wanted by every session that uses them, and evicting one would mean
+        // a silent cue until the next warm put it back.
+        val files = dir.listFiles { f: File ->
+            f.name.endsWith(".wav") && !f.name.startsWith("tone-")
+        } ?: return
         var total = files.sumOf { it.length() }
         if (total <= limitBytes) return
         for (file in files.sortedBy { it.lastModified() }) {

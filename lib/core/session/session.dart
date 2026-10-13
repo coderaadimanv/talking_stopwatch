@@ -3,6 +3,7 @@ import '../clock/clock.dart';
 import '../cues/cue.dart';
 import '../cues/phrase.dart';
 import '../cues/plan_cues.dart';
+import '../cues/sound_settings.dart';
 import '../timeline/timeline.dart';
 import '../timeline/workout.dart';
 
@@ -94,7 +95,11 @@ class Session {
 
   /// Loads a workout and works out its whole script. Nothing is scheduled and
   /// nothing makes a sound until [start].
-  void load(Workout workout, {int offsetMs = 0}) {
+  void load(
+    Workout workout, {
+    int offsetMs = 0,
+    SoundSettings sounds = const SoundSettings(),
+  }) {
     _workout = workout;
     _timeline = expand(workout);
     _cues = planCues(
@@ -102,6 +107,7 @@ class Session {
       workout.cues,
       offsetMs: offsetMs,
       phrases: phrasesFor(workout.kind),
+      sounds: sounds,
     );
     _status = SessionStatus.idle;
     _elapsedAtAnchor = 0;

@@ -7,6 +7,7 @@ import '../../../app/style.dart';
 import '../../../app/widgets/section.dart';
 import '../../../app/widgets/soft_background.dart';
 import '../../../core/cues/cue.dart';
+import '../../../core/cues/sound_settings.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -103,6 +104,49 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const SizedBox(height: Sizes.gap),
               ],
+
+              Section(
+                icon: Icons.music_note_outlined,
+                title: 'Sound',
+                subtitle: _soundSummary(settings.sounds),
+                children: [
+                  _SoundRow(
+                    label: 'Phase changes',
+                    detail: settings.sounds.phase == SoundMode.tone
+                        ? 'A tone cannot say which round it is'
+                        : '"Go, round 3" · "Rest" · "Done"',
+                    mode: settings.sounds.phase,
+                    onChanged: (m) => data.editSettings(
+                      (s) => s.copyWith(sounds: s.sounds.copyWith(phase: m)),
+                    ),
+                  ),
+                  _SoundRow(
+                    label: 'Countdown',
+                    detail: '"three, two, one" into a change',
+                    mode: settings.sounds.countdown,
+                    onChanged: (m) => data.editSettings(
+                      (s) =>
+                          s.copyWith(sounds: s.sounds.copyWith(countdown: m)),
+                    ),
+                  ),
+                  _SoundRow(
+                    label: 'Halfway',
+                    detail: 'Through a long work phase',
+                    mode: settings.sounds.halfway,
+                    onChanged: (m) => data.editSettings(
+                      (s) => s.copyWith(sounds: s.sounds.copyWith(halfway: m)),
+                    ),
+                  ),
+                  _SoundRow(
+                    label: 'Stopwatch time',
+                    detail: 'The stopwatch reading the time out',
+                    mode: settings.sounds.elapsed,
+                    onChanged: (m) => data.editSettings(
+                      (s) => s.copyWith(sounds: s.sounds.copyWith(elapsed: m)),
+                    ),
+                  ),
+                ],
+              ),
 
               Section(
                 icon: Icons.timer_outlined,
@@ -236,6 +280,73 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await player.describe('Cadent', 'Testing the voice');
     await player.warm(const [cue]);
     await player.schedule(const [cue], countUp: true);
+  }
+}
+
+/// What the Sound section is set to, in a phrase rather than four words.
+String _soundSummary(SoundSettings sounds) {
+  final modes = {sounds.phase, sounds.countdown, sounds.halfway, sounds.elapsed};
+  if (modes.length > 1) return 'Voice and tones';
+  return switch (modes.first) {
+    SoundMode.voice => 'The phone speaks',
+    SoundMode.tone => 'Tones only',
+    SoundMode.both => 'A tone, then the words',
+  };
+}
+
+/// One kind of cue, and how it is sounded.
+///
+/// The detail line under the label is doing real work on the phase row: a
+/// round number is spoken as part of its phase word rather than as a cue of
+/// its own, so choosing a tone there is choosing to lose it. That is the only
+/// thing in this feature anybody can be surprised by, so it is said at the
+/// moment it becomes true rather than buried in a help page.
+class _SoundRow extends StatelessWidget {
+  const _SoundRow({
+    required this.label,
+    required this.detail,
+    required this.mode,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String detail;
+  final SoundMode mode;
+  final ValueChanged<SoundMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Sizes.bigGap),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: text.titleMedium),
+          Text(detail, style: text.bodySmall),
+          const SizedBox(height: Sizes.gap),
+          SegmentedButton<SoundMode>(
+            // ActionLabel, not Text: three segments on a 320dp phone leave
+            // about fifty logical pixels of text each, and "Voice" wants more
+            // than that — it wrapped to two lines, which throws nothing and
+            // looks like a design choice.
+            segments: const [
+              ButtonSegment(
+                value: SoundMode.voice,
+                label: ActionLabel('Voice'),
+              ),
+              ButtonSegment(value: SoundMode.tone, label: ActionLabel('Tone')),
+              ButtonSegment(value: SoundMode.both, label: ActionLabel('Both')),
+            ],
+            // No tick, for the same reason as the stopwatch's row: three
+            // segments on a 320dp phone have no width to give away.
+            showSelectedIcon: false,
+            selected: {mode},
+            onSelectionChanged: (choice) => onChanged(choice.first),
+          ),
+        ],
+      ),
+    );
   }
 }
 

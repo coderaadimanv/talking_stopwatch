@@ -1,3 +1,4 @@
+import '../cues/sound_settings.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -31,6 +32,7 @@ class AppSettings {
     this.stopwatchAnnounceSeconds = 60,
     this.silenceDuringFocus = false,
     this.themeId = '',
+    this.sounds = const SoundSettings(),
   });
 
   factory AppSettings.fromJson(Map<String, Object?> json) => AppSettings(
@@ -39,6 +41,9 @@ class AppSettings {
     stopwatchAnnounceSeconds: json['stopwatchAnnounce'] as int? ?? 60,
     silenceDuringFocus: json['silenceDuringFocus'] as bool? ?? false,
     themeId: json['theme'] as String? ?? '',
+    sounds: SoundSettings.fromJson(
+      (json['sounds'] as Map?)?.cast<String, Object?>() ?? const {},
+    ),
   );
 
   /// Calibration for output lag. Bluetooth earbuds run 150–300 ms behind and
@@ -64,12 +69,16 @@ class AppSettings {
   /// order they are offered in can change without changing anybody's phone.
   final String themeId;
 
+  /// Whether each kind of cue is spoken, played as a tone, or both.
+  final SoundSettings sounds;
+
   AppSettings copyWith({
     int? offsetMs,
     bool? keepScreenOn,
     int? stopwatchAnnounceSeconds,
     bool? silenceDuringFocus,
     String? themeId,
+    SoundSettings? sounds,
   }) => AppSettings(
     offsetMs: offsetMs ?? this.offsetMs,
     keepScreenOn: keepScreenOn ?? this.keepScreenOn,
@@ -77,6 +86,7 @@ class AppSettings {
         stopwatchAnnounceSeconds ?? this.stopwatchAnnounceSeconds,
     silenceDuringFocus: silenceDuringFocus ?? this.silenceDuringFocus,
     themeId: themeId ?? this.themeId,
+    sounds: sounds ?? this.sounds,
   );
 
   Map<String, Object?> toJson() => {
@@ -85,6 +95,7 @@ class AppSettings {
     'stopwatchAnnounce': stopwatchAnnounceSeconds,
     'silenceDuringFocus': silenceDuringFocus,
     'theme': themeId,
+    'sounds': sounds.toJson(),
   };
 }
 

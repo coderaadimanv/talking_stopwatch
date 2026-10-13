@@ -101,11 +101,32 @@ final class CuePlayer {
 
     var isAvailable: Bool { renderer.isAvailable }
 
-    func warm(_ phrases: [String: String], completion: @escaping ([String]) -> Void) {
+    /// Renders anything new, puts the bundled tones in beside it, and loads
+    /// every clip into memory.
+    ///
+    /// A tone needs no speech synthesiser, so a device with no voice can still
+    /// run a session in tone mode: the render step fails every phrase and the
+    /// tones go in and play regardless.
+    ///
+    /// The tones pass through ``lift`` like everything else, and come out
+    /// unchanged — they are made at the level it targets, so it measures a
+    /// gain of about 1.00 and leaves them alone. Nothing here has to know they
+    /// are special.
+    func warm(
+        _ phrases: [String: String],
+        tones: [String: Data],
+        completion: @escaping ([String]) -> Void
+    ) {
         renderer.render(phrases) { failed in
+            self.renderer.install(tones)
             let rendered = phrases.keys.filter { !failed.contains($0) }
             for key in rendered where self.buffers[key] == nil {
                 self.buffers[key] = self.loadBuffer(self.renderer.file(for: key))
+            }
+            for key in tones.keys where self.buffers[key] == nil {
+                self.buffers[key] = self.loadBuffer(
+                    self.renderer.bundledFile(for: key)
+                )
             }
             completion(failed)
         }

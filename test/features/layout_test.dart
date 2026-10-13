@@ -118,12 +118,20 @@ void main() {
   /// the same style to measure against: a paragraph knows the height of one of
   /// its own lines, so ask it rather than guess a threshold.
   void expectSingleLine(WidgetTester tester, String label) {
-    final paragraph = tester.renderObject<RenderParagraph>(find.text(label));
-    expect(
-      paragraph.size.height,
-      lessThan(paragraph.preferredLineHeight * 2),
-      reason: '"$label" wrapped onto a second line',
-    );
+    // Every one of them, not just the first: the sound settings put the same
+    // three words on four rows, and only one of those rows has to be tight
+    // for the screen to look broken.
+    final paragraphs = tester
+        .renderObjectList<RenderParagraph>(find.text(label))
+        .toList();
+    expect(paragraphs, isNotEmpty, reason: '"$label" is not on this screen');
+    for (final paragraph in paragraphs) {
+      expect(
+        paragraph.size.height,
+        lessThan(paragraph.preferredLineHeight * 2),
+        reason: '"$label" wrapped onto a second line',
+      );
+    }
   }
 
   /// A platform with nothing working: no voice and no notifications, so every
@@ -385,12 +393,24 @@ void main() {
         await pumpAt(tester, const SettingsScreen(), size: size);
         expect(tester.takeException(), isNull);
 
+        // Three segments to a row, four rows of them, on the narrowest phone
+        // the app supports. These are the newest thing on this screen and the
+        // most likely to wrap.
+        for (final label in ['Voice', 'Tone', 'Both']) {
+          expectSingleLine(tester, label);
+        }
+        expectSingleLine(tester, 'Phase changes');
+
+        await tester.drag(find.byType(ListView), const Offset(0, -400));
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+
         // The chosen segment carries more than the others and is the one
         // that wraps. 'Off' is never chosen in this fixture, so it is the
         // honest single-line reference.
         expectOneLine(tester, '1m', shortEnoughToNeverWrap: 'Off');
 
-        await tester.drag(find.byType(ListView), const Offset(0, -400));
+        await tester.drag(find.byType(ListView), const Offset(0, -600));
         await tester.pump();
         expect(tester.takeException(), isNull);
       });

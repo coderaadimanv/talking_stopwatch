@@ -32,3 +32,6 @@ flutter:
 
   assets:
     - assets/fonts/OFL.txt
+    # The cue tones. Made by `tool/tones.py`, about 100 KB in all, and copied
+    # into the audio cache on the first session that needs one.
+    - assets/sounds/
