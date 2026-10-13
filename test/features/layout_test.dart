@@ -77,6 +77,7 @@ void main() {
     WidgetTester tester,
     Widget screen, {
     required Size size,
+    AppColors theme = AppColors.rust,
   }) async {
     tester.view
       ..physicalSize = size * 3
@@ -86,7 +87,7 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(theme: appTheme(), home: screen),
+        child: MaterialApp(theme: appTheme(theme), home: screen),
       ),
     );
     await tester.pump();
@@ -297,6 +298,20 @@ void main() {
         // line above rather than in a screenshot.
         expect(tester.getSize(find.byType(TickRing)).height, greaterThan(0));
       });
+
+      // One screen under every theme. The contrast arithmetic lives in
+      // theme_test; this is here for the other thing a palette can break —
+      // a layout that quietly assumed the colours it was given.
+      for (final theme in AppColors.themes.skip(1)) {
+        testWidgets('a workout waiting to start fits in ${theme.name}', (
+          tester,
+        ) async {
+          await pumpAt(tester, const RunScreen(), size: size, theme: theme);
+          expect(tester.takeException(), isNull);
+          expectOneLine(tester, 'Start', shortEnoughToNeverWrap: 'Edit');
+          expect(tester.getSize(find.byType(TickRing)).height, greaterThan(0));
+        });
+      }
 
       testWidgets('a workout in progress fits', (tester) async {
         await pumpAt(tester, const RunScreen(), size: size);

@@ -17,7 +17,13 @@ import '../core/timeline/workout.dart';
 // The brand
 // ---------------------------------------------------------------------------
 
-/// The five colours everything else is mixed from.
+/// The five colours the app's own palette is mixed from.
+///
+/// These are the *rust* theme's raw values and nothing more. Screens never
+/// read them — they read [AppColors], which is what changes when the user
+/// picks another theme, and `test/app/conventions_test.dart` fails the build
+/// if one starts to. The only member here that is not a palette colour is
+/// [transparent], which is the absence of one.
 abstract final class Brand {
   static const ink = Color(0xFF171513);
   static const ivory = Color(0xFFF4EFE7);
@@ -30,20 +36,7 @@ abstract final class Brand {
   static const raised = Color(0xFF3F3731); //  34% taupe
   static const line = Color(0xFF544A41); //   52% taupe
 
-  /// The soft shapes behind a running phase: the same colour as the ground,
-  /// lifted or dropped a little. Kept this faint on purpose — they should
-  /// give the screen depth and never be noticed as shapes.
-  static const veilLight = Color(0x18FFFFFF);
-  static const veilDark = Color(0x12000000);
-
   static const transparent = Color(0x00000000);
-
-  /// A card's edge on a dark screen. Warm rather than neutral, so the cards
-  /// belong to the accent that lights the rest of the screen.
-  static final cardLine = terracotta.withValues(alpha: 0.22);
-
-  /// The fill behind a section's icon: the accent, turned right down.
-  static final accentWash = terracotta.withValues(alpha: 0.16);
 }
 
 /// The one place the app is allowed a shadow.
@@ -74,32 +67,19 @@ abstract final class Shadows {
   ];
 }
 
-/// The colour of each phase on the run screen.
+/// Why the phase colours are chosen the way they are, in every theme.
 ///
-/// This is the one place the brand could not simply be copied. A run screen has
-/// to say which phase you are in from across a room, at a glance, while out of
-/// breath — so the five phases have to be told apart instantly. The brand is
-/// essentially one warm hue, and terracotta against rust against taupe is not
-/// enough separation for that job.
+/// A run screen has to say which phase you are in from across a room, at a
+/// glance, while out of breath — so the five phases have to be told apart
+/// instantly. That is a harder constraint than it sounds: the app's own brand
+/// is essentially one warm hue, and terracotta against rust against taupe is
+/// not enough separation for the job. Every theme in [AppColors] therefore
+/// spends its five phase colours on *separation first* and prettiness second,
+/// and `test/app/theme_test.dart` fails the build for a theme that does not.
 ///
-/// So four of the five are the brand's own, and [rest] is a single muted teal,
-/// chosen as terracotta's complement so it still belongs to the palette. If it
-/// ever looks wrong, it is one line, here.
-abstract final class Phases {
-  /// Pale sand: get ready, not yet.
-  static const prepare = Color(0xFFE8C9A0);
-
-  /// Terracotta: the brand's accent, and the phase that matters.
-  static const work = Brand.terracotta;
-
-  /// The one colour not from the brand, and the reason is legibility.
-  static const rest = Color(0xFF6E9A91);
-
-  /// Rust: a longer pause than rest, and visibly deeper.
-  static const breakBetween = Brand.rust;
-
-  static const cooldown = Brand.taupe;
-}
+/// This is also why the themes are a short list of designed sets rather than a
+/// colour picker. A picker would let someone build a run screen they cannot
+/// read, which is the one thing this screen may never be.
 
 // ---------------------------------------------------------------------------
 // Sizes and shapes
@@ -221,6 +201,12 @@ abstract final class Tracking {
 @immutable
 class AppColors extends ThemeExtension<AppColors> {
   const AppColors({
+    required this.id,
+    required this.name,
+    required this.ground,
+    required this.surface,
+    required this.raised,
+    required this.onGround,
     required this.prepare,
     required this.work,
     required this.rest,
@@ -231,16 +217,122 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.danger,
   });
 
-  static const dark = AppColors(
-    prepare: Phases.prepare,
-    work: Phases.work,
-    rest: Phases.rest,
-    breakBetween: Phases.breakBetween,
-    cooldown: Phases.cooldown,
+  /// The app's own, and the default. Ink and ivory, a terracotta accent, taupe
+  /// for everything quiet. Four of the five phases are the brand's own and
+  /// [rest] is a muted teal, chosen as terracotta's complement so it still
+  /// belongs to the palette while being the one thing you can never mistake
+  /// for work.
+  static const rust = AppColors(
+    id: 'rust',
+    name: 'Rust',
+    ground: Brand.ink,
+    surface: Brand.surface,
+    raised: Brand.raised,
+    onGround: Brand.ivory,
+    prepare: Color(0xFFE8C9A0), // pale sand: get ready, not yet
+    work: Brand.terracotta,
+    rest: Color(0xFF6E9A91),
+    breakBetween: Brand.rust, // a longer pause than rest, and visibly deeper
+    cooldown: Brand.taupe,
     muted: Brand.taupe,
     line: Brand.line,
-    danger: Brand.rust,
+    // Not Brand.rust itself: at #A8431E a notice is 2.7:1 on a card, which is
+    // too quiet for the small text every warning in the app is set in. This
+    // is the same colour carried up until it can be read.
+    danger: Color(0xFFCB5A33),
   );
+
+  /// Cool and low-temperature: the furthest thing from the app's own warmth,
+  /// and the one most people switching will switch to.
+  ///
+  /// The accent is an indigo bright enough to carry the dial at a glance, and
+  /// the separation comes from running the phases *around* the wheel rather
+  /// than along one hue — amber prepare, indigo work, green rest. Break is a
+  /// deep violet so that the two long pauses read as one family and the two
+  /// working colours as another.
+  static const slate = AppColors(
+    id: 'slate',
+    name: 'Slate',
+    ground: Color(0xFF14161B),
+    surface: Color(0xFF1F232B),
+    raised: Color(0xFF353C49),
+    onGround: Color(0xFFE9ECF2),
+    prepare: Color(0xFFE5BE7A),
+    work: Color(0xFF6F79BE),
+    rest: Color(0xFF59B89A),
+    breakBetween: Color(0xFFB25E8E),
+    cooldown: Color(0xFF7C8699),
+    muted: Color(0xFF8E97A8),
+    line: Color(0xFF454E5E),
+    danger: Color(0xFFD06072),
+  );
+
+  /// Green and earthy, and the calmest of the four.
+  ///
+  /// Work is a moss green and rest a warm clay — the reverse of the usual
+  /// arrangement, and deliberate: the phase you are *in* should be the one
+  /// that reads as alive, and a green ground with a clay pause separates at
+  /// least as far as terracotta against teal does.
+  static const moss = AppColors(
+    id: 'moss',
+    name: 'Moss',
+    ground: Color(0xFF14180F),
+    surface: Color(0xFF1F2518),
+    raised: Color(0xFF353D29),
+    onGround: Color(0xFFEFF0E4),
+    prepare: Color(0xFFDFCB85),
+    work: Color(0xFF8FB861),
+    rest: Color(0xFFD08A5E),
+    breakBetween: Color(0xFF6E86B0),
+    cooldown: Color(0xFF8A907A),
+    muted: Color(0xFF8F9681),
+    line: Color(0xFF4A5240),
+    danger: Color(0xFFC75F4B),
+  );
+
+  /// Near-black, near-white, and the highest contrast the app can offer.
+  ///
+  /// For anyone who finds the other three hard to read, and the best of the
+  /// four across a gym. The phases are pushed to the brightest, most separated
+  /// hues in the set rather than to tasteful ones, because that is the whole
+  /// point of it — this theme is allowed to be louder than the brand.
+  static const mono = AppColors(
+    id: 'mono',
+    name: 'Mono',
+    ground: Color(0xFF0B0B0C),
+    surface: Color(0xFF1C1C1F),
+    raised: Color(0xFF34343A),
+    onGround: Color(0xFFF7F7F8),
+    prepare: Color(0xFFF2D14E),
+    work: Color(0xFF2E9FD4),
+    rest: Color(0xFF5BE07A),
+    breakBetween: Color(0xFF9B8CFF),
+    cooldown: Color(0xFFA6A6AE),
+    muted: Color(0xFFA6A6AE),
+    line: Color(0xFF55555E),
+    danger: Color(0xFFFF6B6B),
+  );
+
+  /// Every theme, in the order they are offered. The first is the default.
+  static const themes = [rust, slate, moss, mono];
+
+  /// The theme [id] names, or [rust] for an id from a build that had more of
+  /// them than this one does.
+  static AppColors byId(String? id) =>
+      themes.firstWhere((theme) => theme.id == id, orElse: () => rust);
+
+  /// What the stored setting holds, and what the picker shows.
+  final String id;
+  final String name;
+
+  /// The page itself, and the two steps up from it: a card, and a control on
+  /// a card.
+  final Color ground;
+  final Color surface;
+  final Color raised;
+
+  /// Primary text on [ground].
+  final Color onGround;
 
   final Color prepare;
   final Color work;
@@ -263,10 +355,12 @@ class AppColors extends ThemeExtension<AppColors> {
 
   /// The pale face of a dial, a badge or a quiet control. Tinted towards the
   /// colour it sits on rather than plain ivory, so it belongs to that screen.
-  Color faceOn(Color ground) => Color.lerp(Brand.ivory, ground, 0.12)!;
+  Color faceOn(Color ground) => Color.lerp(onGround, ground, 0.12)!;
 
-  /// Whatever reads on [ground]: ink or ivory, whichever has more contrast.
-  Color readableOn(Color ground) => _readableOn(ground);
+  /// Whatever reads on [ground]: the theme's dark or its light, whichever has
+  /// more contrast.
+  Color readableOn(Color background) =>
+      _readableOn(background, dark: ground, light: onGround);
 
   /// The pale face of the dial, the badge and the quiet controls.
   Color phaseFace(SegmentKind kind) => faceOn(phase(kind));
@@ -300,20 +394,34 @@ class AppColors extends ThemeExtension<AppColors> {
   };
 
   /// What to draw on top of the deeper cut — the arc, the primary control.
-  Color onPhaseDeep(SegmentKind kind) => _readableOn(phaseDeep(kind));
+  Color onPhaseDeep(SegmentKind kind) => readableOn(phaseDeep(kind));
 
-  /// The stopwatch has no phase of its own, so it wears the brand's accent.
+  /// The stopwatch has no phase of its own, so it wears the theme's accent.
   Color get stopwatch => work;
 
   /// The fill behind a badge or a section icon on a dark screen: the colour,
-  /// turned right down. [Brand.accentWash] is this for the brand's own
-  /// accent; a mode with a colour of its own needs the same treatment of it.
-  Color washOf(Color ground) => ground.withValues(alpha: 0.16);
+  /// turned right down. [accentWash] is this for the app's own accent; a mode
+  /// with a colour of its own needs the same treatment of it.
+  Color washOf(Color background) => background.withValues(alpha: 0.16);
 
-  /// Focus wears the one cool colour in the set, and that is the point of it:
-  /// terracotta is the colour of a phase that wants you to move, and this
-  /// screen wants the opposite. It is also never used as a ground here — only
-  /// as the arc, the word and the one control that matters.
+  /// The fill behind a section's icon: the accent, turned right down.
+  Color get accentWash => washOf(work);
+
+  /// A card's edge. Tinted with the accent rather than neutral, so the cards
+  /// belong to the colour that lights the rest of the screen.
+  Color get cardLine => work.withValues(alpha: 0.22);
+
+  /// The soft shapes behind a running phase: the same colour as the ground,
+  /// lifted or dropped a little. Kept this faint on purpose — they should
+  /// give the screen depth and never be noticed as shapes. The same in every
+  /// theme, because they are light and shade rather than colour.
+  Color get veilLight => const Color(0x18FFFFFF);
+  Color get veilDark => const Color(0x12000000);
+
+  /// Focus wears the rest colour, and that is the point of it: every theme
+  /// spends [work] on the phase that wants you to move, and this screen wants
+  /// the opposite. It is also never used as a ground here — only as the arc,
+  /// the word and the one control that matters.
   Color get focus => rest;
 
   /// The fill of the one action a screen is really offering. Lit from the
@@ -330,10 +438,16 @@ class AppColors extends ThemeExtension<AppColors> {
   /// contrast against that phase wins. Pale sand takes ink and deep rust takes
   /// ivory without anyone having to remember which, and a change to a phase
   /// colour can never leave unreadable text behind it.
-  Color onPhase(SegmentKind kind) => _readableOn(phase(kind));
+  Color onPhase(SegmentKind kind) => readableOn(phase(kind));
 
   @override
   AppColors copyWith({
+    String? id,
+    String? name,
+    Color? ground,
+    Color? surface,
+    Color? raised,
+    Color? onGround,
     Color? prepare,
     Color? work,
     Color? rest,
@@ -343,6 +457,12 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? line,
     Color? danger,
   }) => AppColors(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    ground: ground ?? this.ground,
+    surface: surface ?? this.surface,
+    raised: raised ?? this.raised,
+    onGround: onGround ?? this.onGround,
     prepare: prepare ?? this.prepare,
     work: work ?? this.work,
     rest: rest ?? this.rest,
@@ -353,10 +473,18 @@ class AppColors extends ThemeExtension<AppColors> {
     danger: danger ?? this.danger,
   );
 
+  /// Half way between two themes is not a theme, so [id] and [name] take the
+  /// side being moved towards rather than being blended into nonsense.
   @override
   AppColors lerp(AppColors? other, double t) {
     if (other == null) return this;
     return AppColors(
+      id: t < 0.5 ? id : other.id,
+      name: t < 0.5 ? name : other.name,
+      ground: Color.lerp(ground, other.ground, t)!,
+      surface: Color.lerp(surface, other.surface, t)!,
+      raised: Color.lerp(raised, other.raised, t)!,
+      onGround: Color.lerp(onGround, other.onGround, t)!,
       prepare: Color.lerp(prepare, other.prepare, t)!,
       work: Color.lerp(work, other.work, t)!,
       rest: Color.lerp(rest, other.rest, t)!,
@@ -381,11 +509,17 @@ IconData phaseIcon(SegmentKind kind) => switch (kind) {
   SegmentKind.cooldown => Icons.spa_rounded,
 };
 
-/// Ink or ivory, whichever can actually be read on [background].
-Color _readableOn(Color background) =>
-    _contrast(background, Brand.ink) >= _contrast(background, Brand.ivory)
-    ? Brand.ink
-    : Brand.ivory;
+/// Whichever of the theme's [dark] and [light] can actually be read on
+/// [background].
+Color _readableOn(Color background, {required Color dark, required Color light}) =>
+    _contrast(background, dark) >= _contrast(background, light) ? dark : light;
+
+/// The WCAG contrast ratio between two colours, 1 (identical) to 21.
+///
+/// Public because a theme's whole promise is made of these — that its five
+/// phases can be told apart and that everything on them can be read — and
+/// `test/app/theme_test.dart` has to be able to check it.
+double contrastBetween(Color a, Color b) => _contrast(a, b);
 
 /// WCAG contrast ratio, which is the only honest way to make this choice.
 double _contrast(Color a, Color b) {
@@ -402,9 +536,9 @@ extension ColorsOf on BuildContext {
 ///
 /// A bare arrow on a dark screen is a small grey mark in a large empty corner.
 /// The disc gives it an edge to be seen against and a target to be hit.
-ButtonStyle chipIconButton() => ButtonStyle(
-  backgroundColor: const WidgetStatePropertyAll(Brand.surface),
-  foregroundColor: const WidgetStatePropertyAll(Brand.ivory),
+ButtonStyle chipIconButton(AppColors colors) => ButtonStyle(
+  backgroundColor: WidgetStatePropertyAll(colors.surface),
+  foregroundColor: WidgetStatePropertyAll(colors.onGround),
   overlayColor: const WidgetStatePropertyAll(Color(0x14F4EFE7)),
   shape: const WidgetStatePropertyAll(CircleBorder()),
   minimumSize: const WidgetStatePropertyAll(
@@ -468,26 +602,26 @@ extension _VariableWeight on TextStyle {
 
 /// The app's theme. Dark, because this screen is looked at in a gym at six in
 /// the morning and is mostly one enormous number.
-ThemeData appTheme() {
-  const scheme = ColorScheme.dark(
-    primary: Brand.terracotta,
-    onPrimary: Brand.ink,
-    secondary: Brand.taupe,
-    onSecondary: Brand.ink,
+ThemeData appTheme([AppColors colors = AppColors.rust]) {
+  final scheme = ColorScheme.dark(
+    primary: colors.work,
+    onPrimary: colors.readableOn(colors.work),
+    secondary: colors.muted,
+    onSecondary: colors.ground,
     // The quiet filled surface behind a tonal icon button. Raised enough to
     // find on both the page and a card, far short of competing with them:
     // a row of solid taupe blocks reads as the loudest thing on the screen,
     // which a minus sign should never be.
-    secondaryContainer: Brand.raised,
-    onSecondaryContainer: Brand.ivory,
-    surface: Brand.ink,
-    onSurface: Brand.ivory,
-    surfaceContainer: Brand.surface,
-    surfaceContainerHighest: Brand.raised,
-    outline: Brand.line,
-    outlineVariant: Brand.surface,
-    error: Brand.rust,
-    onError: Brand.ivory,
+    secondaryContainer: colors.raised,
+    onSecondaryContainer: colors.onGround,
+    surface: colors.ground,
+    onSurface: colors.onGround,
+    surfaceContainer: colors.surface,
+    surfaceContainerHighest: colors.raised,
+    outline: colors.line,
+    outlineVariant: colors.surface,
+    error: colors.danger,
+    onError: colors.onGround,
   );
 
   final base = ThemeData(
@@ -495,16 +629,16 @@ ThemeData appTheme() {
     brightness: Brightness.dark,
     colorScheme: scheme,
     fontFamily: _fontFamily,
-    scaffoldBackgroundColor: Brand.ink,
-    extensions: const [AppColors.dark],
+    scaffoldBackgroundColor: colors.ground,
+    extensions: [colors],
   );
 
   return base.copyWith(
-    textTheme: _textTheme(base.textTheme),
+    textTheme: _textTheme(base.textTheme, colors),
 
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Brand.ink,
-      foregroundColor: Brand.ivory,
+    appBarTheme: AppBarTheme(
+      backgroundColor: colors.ground,
+      foregroundColor: colors.onGround,
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
@@ -512,57 +646,57 @@ ThemeData appTheme() {
 
     // Flat and square. The brand has no shadows in it, and a drop shadow is
     // the quickest way to make a deliberate design look like a default one.
-    filledButtonTheme: FilledButtonThemeData(style: _filled()),
-    elevatedButtonTheme: ElevatedButtonThemeData(style: _filled()),
-    outlinedButtonTheme: OutlinedButtonThemeData(style: _outlined()),
-    textButtonTheme: TextButtonThemeData(style: _text()),
-    iconButtonTheme: IconButtonThemeData(style: _icon()),
+    filledButtonTheme: FilledButtonThemeData(style: _filled(colors)),
+    elevatedButtonTheme: ElevatedButtonThemeData(style: _filled(colors)),
+    outlinedButtonTheme: OutlinedButtonThemeData(style: _outlined(colors)),
+    textButtonTheme: TextButtonThemeData(style: _text(colors)),
+    iconButtonTheme: IconButtonThemeData(style: _icon(colors)),
 
     cardTheme: CardThemeData(
-      color: Brand.surface,
+      color: colors.surface,
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Sizes.radiusCard),
-        side: BorderSide(color: Brand.cardLine, width: Sizes.hairline),
+        side: BorderSide(color: colors.cardLine, width: Sizes.hairline),
       ),
     ),
 
-    dividerTheme: const DividerThemeData(
-      color: Brand.line,
+    dividerTheme: DividerThemeData(
+      color: colors.line,
       thickness: Sizes.hairline,
       space: Sizes.bigGap,
     ),
 
-    iconTheme: const IconThemeData(size: Sizes.icon, color: Brand.ivory),
+    iconTheme: IconThemeData(size: Sizes.icon, color: colors.onGround),
 
     listTileTheme: ListTileThemeData(
       minTileHeight: Sizes.row,
       contentPadding: const EdgeInsets.symmetric(horizontal: Sizes.gutter),
-      titleTextStyle: const TextStyle(
-        color: Brand.ivory,
+      titleTextStyle: TextStyle(
+        color: colors.onGround,
         fontSize: 16,
       ).weight(500),
-      subtitleTextStyle: const TextStyle(
-        color: Brand.taupe,
+      subtitleTextStyle: TextStyle(
+        color: colors.muted,
         fontSize: 13,
       ).weight(400),
-      iconColor: Brand.taupe,
+      iconColor: colors.muted,
     ),
 
-    inputDecorationTheme: const InputDecorationThemeData(
+    inputDecorationTheme: InputDecorationThemeData(
       border: UnderlineInputBorder(
-        borderSide: BorderSide(color: Brand.line, width: Sizes.hairline),
+        borderSide: BorderSide(color: colors.line, width: Sizes.hairline),
       ),
       enabledBorder: UnderlineInputBorder(
-        borderSide: BorderSide(color: Brand.line, width: Sizes.hairline),
+        borderSide: BorderSide(color: colors.line, width: Sizes.hairline),
       ),
       focusedBorder: UnderlineInputBorder(
-        borderSide: BorderSide(color: Brand.terracotta, width: 2),
+        borderSide: BorderSide(color: colors.work, width: 2),
       ),
-      labelStyle: TextStyle(color: Brand.taupe),
-      floatingLabelStyle: TextStyle(color: Brand.terracotta),
-      hintStyle: TextStyle(color: Brand.taupe),
+      labelStyle: TextStyle(color: colors.muted),
+      floatingLabelStyle: TextStyle(color: colors.work),
+      hintStyle: TextStyle(color: colors.muted),
     ),
 
     switchTheme: SwitchThemeData(
@@ -570,21 +704,21 @@ ThemeData appTheme() {
       // hole punched in the switch rather than as the part that moves.
       thumbColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected)
-            ? Brand.ivory
-            : Brand.taupe,
+            ? colors.onGround
+            : colors.muted,
       ),
       trackColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected)
-            ? Brand.terracotta
-            : Brand.surface,
+            ? colors.work
+            : colors.surface,
       ),
-      trackOutlineColor: const WidgetStatePropertyAll(Brand.line),
+      trackOutlineColor: WidgetStatePropertyAll(colors.line),
     ),
 
-    sliderTheme: const SliderThemeData(
-      activeTrackColor: Brand.terracotta,
-      inactiveTrackColor: Brand.raised,
-      thumbColor: Brand.terracotta,
+    sliderTheme: SliderThemeData(
+      activeTrackColor: colors.work,
+      inactiveTrackColor: colors.raised,
+      thumbColor: colors.work,
       overlayColor: Color(0x33D97745),
       // A little lift under the thumb, so the one thing being dragged is the
       // one thing standing off the track.
@@ -595,16 +729,16 @@ ThemeData appTheme() {
       style: ButtonStyle(
         backgroundColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.selected)
-              ? Brand.terracotta
+              ? colors.work
               : Colors.transparent,
         ),
         foregroundColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.selected)
-              ? Brand.ink
-              : Brand.ivory,
+              ? colors.ground
+              : colors.onGround,
         ),
-        side: const WidgetStatePropertyAll(
-          BorderSide(color: Brand.line, width: Sizes.hairline),
+        side: WidgetStatePropertyAll(
+          BorderSide(color: colors.line, width: Sizes.hairline),
         ),
         shape: const WidgetStatePropertyAll(_shape),
         textStyle: WidgetStatePropertyAll(
@@ -614,8 +748,8 @@ ThemeData appTheme() {
     ),
 
     floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: Brand.terracotta,
-      foregroundColor: Brand.ink,
+      backgroundColor: colors.work,
+      foregroundColor: colors.ground,
       elevation: 0,
       focusElevation: 0,
       hoverElevation: 0,
@@ -629,17 +763,17 @@ ThemeData appTheme() {
 }
 
 /// The primary action: solid terracotta, ink on top, no shadow, square edges.
-ButtonStyle _filled() => ButtonStyle(
+ButtonStyle _filled(AppColors colors) => ButtonStyle(
   backgroundColor: WidgetStateProperty.resolveWith(
     (states) => states.contains(WidgetState.disabled)
-        ? Brand.raised
+        ? colors.raised
         : states.contains(WidgetState.pressed)
-        ? Brand.rust
-        : Brand.terracotta,
+        ? colors.danger
+        : colors.work,
   ),
   foregroundColor: WidgetStateProperty.resolveWith(
     (states) =>
-        states.contains(WidgetState.disabled) ? Brand.taupe : Brand.ink,
+        states.contains(WidgetState.disabled) ? colors.muted : colors.ground,
   ),
   overlayColor: const WidgetStatePropertyAll(Color(0x1A171513)),
   elevation: const WidgetStatePropertyAll(0),
@@ -656,23 +790,23 @@ ButtonStyle _filled() => ButtonStyle(
 );
 
 /// The secondary action: a hairline and nothing else, until you touch it.
-ButtonStyle _outlined() => ButtonStyle(
+ButtonStyle _outlined(AppColors colors) => ButtonStyle(
   backgroundColor: WidgetStateProperty.resolveWith(
     (states) => states.contains(WidgetState.pressed)
-        ? Brand.surface
+        ? colors.surface
         : Colors.transparent,
   ),
   foregroundColor: WidgetStateProperty.resolveWith(
     (states) =>
-        states.contains(WidgetState.disabled) ? Brand.raised : Brand.ivory,
+        states.contains(WidgetState.disabled) ? colors.raised : colors.onGround,
   ),
   side: WidgetStateProperty.resolveWith(
     (states) => BorderSide(
       color: states.contains(WidgetState.disabled)
-          ? Brand.raised
+          ? colors.raised
           : states.contains(WidgetState.pressed)
-          ? Brand.terracotta
-          : Brand.line,
+          ? colors.work
+          : colors.line,
       width: Sizes.hairline,
     ),
   ),
@@ -689,11 +823,11 @@ ButtonStyle _outlined() => ButtonStyle(
 );
 
 /// The quiet one: terracotta text, no box at all.
-ButtonStyle _text() => ButtonStyle(
+ButtonStyle _text(AppColors colors) => ButtonStyle(
   foregroundColor: WidgetStateProperty.resolveWith(
     (states) => states.contains(WidgetState.disabled)
-        ? Brand.raised
-        : Brand.terracotta,
+        ? colors.raised
+        : colors.work,
   ),
   overlayColor: const WidgetStatePropertyAll(Color(0x1AD97745)),
   minimumSize: const WidgetStatePropertyAll(
@@ -703,10 +837,10 @@ ButtonStyle _text() => ButtonStyle(
   textStyle: WidgetStatePropertyAll(_actionText),
 );
 
-ButtonStyle _icon() => ButtonStyle(
+ButtonStyle _icon(AppColors colors) => ButtonStyle(
   foregroundColor: WidgetStateProperty.resolveWith(
     (states) =>
-        states.contains(WidgetState.disabled) ? Brand.raised : Brand.ivory,
+        states.contains(WidgetState.disabled) ? colors.raised : colors.onGround,
   ),
   overlayColor: const WidgetStatePropertyAll(Color(0x14F4EFE7)),
   shape: const WidgetStatePropertyAll(_shape),
@@ -723,7 +857,7 @@ final _actionText = const TextStyle(
   letterSpacing: 1.2,
 ).weight(600);
 
-TextTheme _textTheme(TextTheme base) => base.copyWith(
+TextTheme _textTheme(TextTheme base, AppColors colors) => base.copyWith(
   // The countdown, and the only thing on the screen that is read from a
   // distance.
   //
@@ -737,32 +871,32 @@ TextTheme _textTheme(TextTheme base) => base.copyWith(
         fontSize: Sizes.countdownText,
         letterSpacing: Tracking.display,
         height: 1,
-        color: Brand.ivory,
+        color: colors.onGround,
       )
       .weight(500),
   headlineLarge: base.headlineLarge
       ?.copyWith(
         fontSize: Sizes.phaseText,
         letterSpacing: Tracking.wide,
-        color: Brand.ivory,
+        color: colors.onGround,
       )
       .weight(600),
   headlineSmall: base.headlineSmall
-      ?.copyWith(letterSpacing: Tracking.tight, color: Brand.ivory)
+      ?.copyWith(letterSpacing: Tracking.tight, color: colors.onGround)
       .weight(500),
   titleLarge: base.titleLarge
-      ?.copyWith(letterSpacing: Tracking.tight, color: Brand.ivory)
+      ?.copyWith(letterSpacing: Tracking.tight, color: colors.onGround)
       .weight(500),
-  titleMedium: base.titleMedium?.copyWith(color: Brand.ivory).weight(500),
-  bodyLarge: base.bodyLarge?.copyWith(color: Brand.ivory).weight(400),
-  bodyMedium: base.bodyMedium?.copyWith(color: Brand.taupe).weight(400),
-  bodySmall: base.bodySmall?.copyWith(color: Brand.taupe).weight(400),
+  titleMedium: base.titleMedium?.copyWith(color: colors.onGround).weight(500),
+  bodyLarge: base.bodyLarge?.copyWith(color: colors.onGround).weight(400),
+  bodyMedium: base.bodyMedium?.copyWith(color: colors.muted).weight(400),
+  bodySmall: base.bodySmall?.copyWith(color: colors.muted).weight(400),
   // Section headings, set the way the brand sets them: small, uppercase and
   // widely tracked.
   labelLarge: base.labelLarge
-      ?.copyWith(letterSpacing: Tracking.wider, color: Brand.taupe)
+      ?.copyWith(letterSpacing: Tracking.wider, color: colors.muted)
       .weight(600),
   labelMedium: base.labelMedium
-      ?.copyWith(letterSpacing: Tracking.wide, color: Brand.taupe)
+      ?.copyWith(letterSpacing: Tracking.wide, color: colors.muted)
       .weight(600),
 );

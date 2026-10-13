@@ -54,9 +54,11 @@ Why it matters:
 5. **The cue-script rules live in exactly one place** (`core/cues/`). No screen
    decides when to say something.
 6. **The whole look lives in `lib/app/style.dart`** — colours, sizes, shapes,
-   type and the theme. Never `Colors.green`, `Color(0x…)`, `fontSize:` or
-   `minimumSize:` in a widget; screens use the theme or `context.colors`.
-   `test/app/conventions_test.dart` fails the build if one starts to.
+   type and the theme. Never `Colors.green`, `Color(0x…)`, `Brand.anything` or
+   `fontSize:` in a widget; screens use the theme or `context.colors`.
+   `test/app/conventions_test.dart` fails the build if one starts to. Since
+   the app gained themes this is not a tidiness rule: a hard-coded colour is a
+   screen that silently ignores the theme the user chose.
 7. **A button label never wraps.** Use `ActionLabel`, which shrinks instead.
    Wrapping is not an overflow, so nothing throws and "Re / set" just looks
    like a choice — and it happens to anyone who turns their system font up.
@@ -231,6 +233,33 @@ Two Android details that the app depends on and that are easy to undo:
 `leadMs` is zero from Dart on purpose: the platform pins cue zero that far in
 the future while `Session` pins it to the moment of the call, so anything else
 is the display and the voice disagreeing by exactly that much.
+
+## Themes
+
+Four palettes — **Rust** (the app's own, and the default), **Slate**, **Moss**
+and **Mono** — each a single `AppColors` constant in `style.dart`, chosen in
+Settings and stored by name in `AppSettings.themeId`. An id this build does not
+know reads as rust, so a phone that has been on a later build still opens.
+
+`AppColors` is the only thing a screen ever reads. `Brand` is now just the rust
+palette's raw values and is private to `style.dart` in everything but name —
+the one exception is `Brand.transparent`, which is the absence of a colour
+rather than one.
+
+**A theme here is a set, not an accent, and `test/app/theme_test.dart` enforces
+what the set has to do**: the five phases must be tellable apart (perceptual
+ΔE in CIE Lab, because WCAG contrast is the wrong tool for "is this a different
+colour" — two hues can match in luminance exactly), work and rest must be far
+apart because they are the pair that alternates all session, and everything
+written anywhere has to clear WCAG. That is why the themes are a short list of
+designed sets and not a colour picker: a picker would let someone build a run
+screen they cannot read.
+
+**What the test does not cover is how a palette looks**, and that gap is real —
+both problems found in the first three palettes were found by screenshot, not
+by the suite. `deepOf` boosts saturation, which moves a blue much further than
+an orange, so a bright accent can come out as a vivid slab that belongs to no
+palette. Screenshot a new theme on the run screen before believing it.
 
 ## The running screens
 

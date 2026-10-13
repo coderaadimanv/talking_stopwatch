@@ -46,11 +46,11 @@ class PillButton extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(Sizes.pill / 2),
         gradient: _filled && enabled ? colors.gradientOn(accent) : null,
-        color: _filled && !enabled ? Brand.raised : null,
+        color: _filled && !enabled ? context.colors.raised : null,
         border: _filled
             ? null
             : Border.all(
-                color: enabled ? accent : Brand.raised,
+                color: enabled ? accent : context.colors.raised,
                 width: Sizes.hairline,
               ),
         boxShadow: _filled && enabled ? Shadows.glow(accent) : null,

@@ -43,7 +43,7 @@ class PresetsScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: Brand.ink,
+      backgroundColor: context.colors.ground,
       appBar: AppBar(
         backgroundColor: Brand.transparent,
         title: const Text('Cadent'),
@@ -56,7 +56,7 @@ class PresetsScreen extends ConsumerWidget {
         ],
       ),
       body: SoftBackground(
-        color: Brand.ink,
+        color: context.colors.ground,
         glow: colors.work,
         child: SafeArea(
           child: ListView(
@@ -132,7 +132,7 @@ class _Add extends StatelessWidget {
   Widget build(BuildContext context) => IconButton(
     onPressed: onPressed,
     tooltip: tooltip,
-    style: chipIconButton(),
+    style: chipIconButton(context.colors),
     icon: const Icon(Icons.add),
   );
 }
@@ -235,7 +235,7 @@ class _StopwatchCard extends StatelessWidget {
             children: [
               CircleBadge.icon(
                 size: Sizes.badgeSmall,
-                background: Brand.accentWash,
+                background: context.colors.accentWash,
                 icon: Icons.timer_outlined,
                 color: accent,
               ),

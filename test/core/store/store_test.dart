@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cadent/app/style.dart';
 import 'package:cadent/core/store/store.dart';
 import 'package:cadent/core/timeline/workout.dart';
 
@@ -137,6 +138,20 @@ void main() {
       const AppData(settings: AppSettings(silenceDuringFocus: true)),
     );
     expect((await store.load()).settings.silenceDuringFocus, isTrue);
+  });
+
+  test('the chosen theme survives a round trip, and defaults to none', () async {
+    expect((await store.load()).settings.themeId, isEmpty);
+
+    await store.save(const AppData(settings: AppSettings(themeId: 'slate')));
+    expect((await store.load()).settings.themeId, 'slate');
+  });
+
+  test('a theme this build has never heard of reads as the default', () {
+    // A phone that has been on a later build, or a hand-edited file. The app
+    // has to open, and it has to open looking like something.
+    expect(AppColors.byId('aurora'), same(AppColors.rust));
+    expect(AppColors.byId(''), same(AppColors.rust));
   });
 
   test('saving leaves no temporary file behind', () async {

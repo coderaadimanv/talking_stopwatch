@@ -30,6 +30,7 @@ class AppSettings {
     this.keepScreenOn = false,
     this.stopwatchAnnounceSeconds = 60,
     this.silenceDuringFocus = false,
+    this.themeId = '',
   });
 
   factory AppSettings.fromJson(Map<String, Object?> json) => AppSettings(
@@ -37,6 +38,7 @@ class AppSettings {
     keepScreenOn: json['keepScreenOn'] as bool? ?? false,
     stopwatchAnnounceSeconds: json['stopwatchAnnounce'] as int? ?? 60,
     silenceDuringFocus: json['silenceDuringFocus'] as bool? ?? false,
+    themeId: json['theme'] as String? ?? '',
   );
 
   /// Calibration for output lag. Bluetooth earbuds run 150–300 ms behind and
@@ -56,17 +58,25 @@ class AppSettings {
   /// to do because they opened a timer. Android only — no iOS app can.
   final bool silenceDuringFocus;
 
+  /// Which palette the app wears. Empty is the default one, which is also
+  /// what an id from some later build with more themes than this one reads
+  /// as — see `AppColors.byId`. Stored as a name rather than an index so the
+  /// order they are offered in can change without changing anybody's phone.
+  final String themeId;
+
   AppSettings copyWith({
     int? offsetMs,
     bool? keepScreenOn,
     int? stopwatchAnnounceSeconds,
     bool? silenceDuringFocus,
+    String? themeId,
   }) => AppSettings(
     offsetMs: offsetMs ?? this.offsetMs,
     keepScreenOn: keepScreenOn ?? this.keepScreenOn,
     stopwatchAnnounceSeconds:
         stopwatchAnnounceSeconds ?? this.stopwatchAnnounceSeconds,
     silenceDuringFocus: silenceDuringFocus ?? this.silenceDuringFocus,
+    themeId: themeId ?? this.themeId,
   );
 
   Map<String, Object?> toJson() => {
@@ -74,6 +84,7 @@ class AppSettings {
     'keepScreenOn': keepScreenOn,
     'stopwatchAnnounce': stopwatchAnnounceSeconds,
     'silenceDuringFocus': silenceDuringFocus,
+    'theme': themeId,
   };
 }
 
