@@ -192,6 +192,31 @@ or ask the speech engine for. **Nothing is ever spoken live** — the engine tak
 100–400 unpredictable milliseconds to start, enough to land "three" after the
 phase it was counting down has already changed.
 
+### Loudness
+
+The phone's own voice renders quietly — measured on Google's engine, about
+-6 dBFS peak and -17 dBFS across the speech — and there is no gain anywhere
+downstream to make it up with: `SoundPool`'s volume is a fraction of the media
+stream and a player node's stops at 1.0. So every clip is lifted on the way
+out of the synthesiser, by `Loudness.lift` on Android and `CuePlayer.lift` on
+iOS, to about -11 dBFS across its speech, with the few samples that would then
+pass the knee bent smoothly into the ceiling. That is roughly +6 dB with about
+one sample in a hundred touched, which is the difference between hearing a cue
+across a gym and not. **Both platforms carry the same four numbers and must
+keep carrying the same ones.**
+
+Two consequences worth knowing. The silence is left out of the measurement —
+a clip is mostly the pause around the word, and averaging that in asks for a
+gain the word does not need. And the renderer's cache is keyed on *how* a clip
+was made as well as who made it: `PhraseRenderer.RENDERING` rides along in the
+voice stamp, so changing any of this means bumping it, or every phone that has
+run a workout keeps its old clips forever.
+
+The volume keys are pointed at `STREAM_MUSIC` in `MainActivity.onCreate`.
+Without it they move the ringer for all but the one second a minute something
+is playing, so someone turning up a countdown they cannot hear is turning up
+their ringtone instead.
+
 Two Android details that the app depends on and that are easy to undo:
 
 - The schedule is armed with `Handler.postAtTime`, which runs on

@@ -200,7 +200,12 @@ abstract final class Sizes {
 /// small labels opened right up.
 abstract final class Tracking {
   static const tight = -0.5;
-  static const display = -4.0;
+
+  /// The countdown's own. Negative, so a five-figure clock holds together as
+  /// one number instead of drifting apart at 140 points — but only gently:
+  /// the digits are set heavy enough to be read across a room, and heavy
+  /// digits pulled as tight as light ones touch.
+  static const display = -2.0;
   static const normal = 0.0;
 
   /// Wide-tracked uppercase, the brand's signature for anything small.
@@ -719,8 +724,14 @@ final _actionText = const TextStyle(
 ).weight(600);
 
 TextTheme _textTheme(TextTheme base) => base.copyWith(
-  // The countdown. Thin and enormous, pulled tight so the digits sit together
-  // rather than drifting apart at 140 points.
+  // The countdown, and the only thing on the screen that is read from a
+  // distance.
+  //
+  // Weight is what makes that work, not size. The dial is capped at 320
+  // logical pixels and the number is fitted inside it, so on a phone propped
+  // up across a room the digits land around 100 — about a centimetre of
+  // actual glass, where a hairline stroke is under half a millimetre and
+  // simply disappears. Medium doubles the stroke and costs nothing else.
   displayLarge: base.displayLarge
       ?.copyWith(
         fontSize: Sizes.countdownText,
@@ -728,7 +739,7 @@ TextTheme _textTheme(TextTheme base) => base.copyWith(
         height: 1,
         color: Brand.ivory,
       )
-      .weight(200),
+      .weight(500),
   headlineLarge: base.headlineLarge
       ?.copyWith(
         fontSize: Sizes.phaseText,

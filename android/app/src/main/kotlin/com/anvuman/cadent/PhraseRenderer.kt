@@ -35,6 +35,20 @@ class PhraseRenderer(private val context: Context) {
     private val dir: File
         get() = File(context.cacheDir, "phrases").also { it.mkdirs() }
 
+    private companion object {
+        /**
+         * Bumped whenever a clip would come out differently from the same
+         * voice saying the same words.
+         *
+         * It rides along in the voice stamp because it is the same promise:
+         * a cached file is only good while the thing that made it is
+         * unchanged, and the engine is only half of that. Without this, every
+         * phone that has already run a workout keeps the quiet clips it
+         * rendered before [Loudness] existed, forever.
+         */
+        const val RENDERING = "gain1"
+    }
+
     fun fileFor(key: String): File = File(dir, "$key.wav")
 
     /** Whether this phone has a voice at all. Without one the app stays silent. */
@@ -102,7 +116,7 @@ class PhraseRenderer(private val context: Context) {
     private fun voiceStamp(): String {
         val engine = tts ?: return "none"
         val voice = engine.voice
-        return "${engine.defaultEngine}|${voice?.name ?: "?"}|${voice?.locale ?: "?"}"
+        return "$RENDERING|${engine.defaultEngine}|${voice?.name ?: "?"}|${voice?.locale ?: "?"}"
     }
 
     /** Keeps the cache small enough to ignore: oldest files go first. */
@@ -156,7 +170,14 @@ class PhraseRenderer(private val context: Context) {
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) = Unit
 
-            override fun onDone(utteranceId: String?) = finished(utteranceId, ok = true)
+            override fun onDone(utteranceId: String?) {
+                // Here rather than anywhere later, because this runs on the
+                // engine's own thread and before the batch reports back — so
+                // the file is already loud by the time anything loads it,
+                // and the main thread never waits on the arithmetic.
+                utteranceId?.let { Loudness.lift(fileFor(it)) }
+                finished(utteranceId, ok = true)
+            }
 
             @Deprecated("Replaced by the two-argument form, still called below 21")
             override fun onError(utteranceId: String?) = finished(utteranceId, ok = false)
