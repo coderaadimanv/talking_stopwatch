@@ -49,7 +49,9 @@ import UIKit
 
     case "warm":
       let phrases = arguments["phrases"] as? [String: String] ?? [:]
-      player.warm(phrases) { failed in result(failed) }
+      let tones = (arguments["tones"] as? [String: FlutterStandardTypedData] ?? [:])
+        .mapValues { $0.data }
+      player.warm(phrases, tones: tones) { failed in result(failed) }
 
     case "schedule":
       let at = arguments["at"] as? [Int] ?? []

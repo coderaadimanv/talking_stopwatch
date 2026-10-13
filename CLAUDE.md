@@ -234,6 +234,41 @@ Two Android details that the app depends on and that are easy to undo:
 the future while `Session` pins it to the moment of the call, so anything else
 is the display and the voice disagreeing by exactly that much.
 
+## Tones
+
+The app can play a sound instead of speaking, chosen **per kind of cue** in
+Settings: phase changes, the countdown, halfway, and the stopwatch's time each
+get **Voice / Tone / Both**, in `SoundSettings`.
+
+**A tone is just another clip**, and that is what makes the feature cheap. A
+`Cue` is `(when, what)` and the platform contract is "play the clip named `key`
+at `atMs`" — so `CueEngine`, the `postAtTime` schedule, the wake lock, the
+foreground service and the lock-screen controls never learn tones exist.
+`_sounded()` in `plan_cues.dart` is the whole of it.
+
+Four rules worth keeping:
+
+- **A preset decides *whether* a cue happens; Settings decides *how* it
+  sounds.** That split is why the workout editor was not touched at all.
+- **There are four choices, not five.** A round label is spoken as part of its
+  phase word ("Go, round 1" is one utterance by design), so choosing a tone for
+  the phase *is* choosing to lose the round number. The Settings row says so.
+- **Under `both` the tone leads by `toneLeadMs` and the word stays on time.**
+  The word is what the countdown on screen is agreeing with, so it may never
+  move. Where there is no room for the lead — a cue at the very start — the
+  tone is dropped and the word kept.
+- **The tones are installed after rendering, never before.** Rendering is what
+  notices the phone's voice has changed and drops the whole audio cache; a
+  tone written ahead of that is deleted on the way past. Both halves go in one
+  `warm` call so only the platform has to keep that order.
+
+`tool/tones.py` makes the six clips in `assets/sounds/` and is committed so a
+tone can be retuned by changing a number. They are rendered **at the loudness
+`Loudness` lifts speech to**, which means the device-side lift measures a gain
+of about 1.00 and leaves them alone — no special case needed, and worth not
+breaking. A tone needs no speech engine at all, so a phone with no voice can
+still run a session in tone mode.
+
 ## Themes
 
 Four palettes — **Rust** (the app's own, and the default), **Slate**, **Moss**

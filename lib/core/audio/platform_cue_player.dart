@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 
 import '../cues/cue.dart';
+import '../cues/tone.dart';
 import 'cue_player.dart';
 
 /// The real [CuePlayer]: hands the cue list to the platform and lets it play.
@@ -55,21 +56,40 @@ class PlatformCuePlayer implements CuePlayer {
   @override
   Future<bool> available() async => await _invoke<bool>('available') ?? false;
 
+  /// The bundled tones, read once and kept. Six small files; re-reading them
+  /// at the start of every session would be work for nothing.
+  final Map<Tone, Uint8List> _tones = {};
+
   @override
   Future<void> warm(List<Cue> cues) async {
     // One entry per distinct phrase: a 30/10 x 8 workout has 73 cues but only
     // about 20 different things to say.
     final phrases = <String, String>{};
+    final tones = <Tone>{};
     for (final cue in cues) {
-      phrases[cue.key] = cue.text;
+      if (cue.tone case final tone?) {
+        tones.add(tone);
+      } else {
+        phrases[cue.key] = cue.text;
+      }
     }
-    if (phrases.isEmpty) return;
+    if (phrases.isEmpty && tones.isEmpty) return;
 
-    final failed = await _invoke<List<Object?>>('warm', {'phrases': phrases});
+    // Both halves in one call, because the order matters and only the
+    // platform can keep it: rendering a phrase may drop the whole audio cache
+    // (the engine's voice can change underneath us), so the tones have to be
+    // written after that and before anything is loaded for playing.
+    final failed = await _invoke<List<Object?>>('warm', {
+      'phrases': phrases,
+      'tones': {for (final tone in tones) tone.key: await _bytesOf(tone)},
+    });
     unrenderable
       ..clear()
       ..addAll(failed?.whereType<String>() ?? const []);
   }
+
+  Future<Uint8List> _bytesOf(Tone tone) async =>
+      _tones[tone] ??= (await rootBundle.load(tone.asset)).buffer.asUint8List();
 
   @override
   Future<void> schedule(

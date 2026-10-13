@@ -71,7 +71,8 @@ class MainActivity : FlutterActivity() {
 
             "warm" -> {
                 val phrases = call.argument<Map<String, String>>("phrases").orEmpty()
-                CueEngine.warm(phrases) { failed -> result.success(failed) }
+                val tones = call.argument<Map<String, ByteArray>>("tones").orEmpty()
+                CueEngine.warm(phrases, tones) { failed -> result.success(failed) }
             }
 
             "schedule" -> {

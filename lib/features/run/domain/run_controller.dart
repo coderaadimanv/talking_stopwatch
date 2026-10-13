@@ -140,7 +140,11 @@ class RunController extends Notifier<RunState> {
     if (workout == null) return;
 
     ref.read(selectedWorkoutIdProvider.notifier).select(id);
-    _session.load(workout, offsetMs: data.settings.offsetMs);
+    _session.load(
+      workout,
+      offsetMs: data.settings.offsetMs,
+      sounds: data.settings.sounds,
+    );
     _session.adopt(elapsedMs: elapsed, paused: await player.isPaused());
 
     if (_session.state.status == SessionStatus.running) _beginTicking();
@@ -162,7 +166,11 @@ class RunController extends Notifier<RunState> {
 
   Future<void> start() async {
     final data = ref.read(appDataProvider);
-    _session.load(_workout, offsetMs: data.settings.offsetMs);
+    _session.load(
+      _workout,
+      offsetMs: data.settings.offsetMs,
+      sounds: data.settings.sounds,
+    );
 
     final player = ref.read(cuePlayerProvider);
     await player.askToNotify();

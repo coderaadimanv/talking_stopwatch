@@ -2,17 +2,191 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cadent/core/cues/cue.dart';
 import 'package:cadent/core/cues/phrase.dart';
 import 'package:cadent/core/cues/plan_cues.dart';
+import 'package:cadent/core/cues/sound_settings.dart';
 import 'package:cadent/core/timeline/timeline.dart';
 import 'package:cadent/core/timeline/workout.dart';
 
-/// `'10000 Go, round 1'` per cue — so a failure reads like the script.
+/// `'10000 Go, round 1'` per cue, or `'10000 <work>'` for a tone — so a
+/// failure reads like the script.
 List<String> script(List<Cue> cues) =>
-    cues.map((c) => '${c.atMs} ${c.text}').toList();
+    cues.map((c) => '${c.atMs} ${c.tone == null ? c.text : "<${c.tone!.name}>"}')
+        .toList();
 
 List<Cue> cuesFor(Workout w, {int offsetMs = 0}) =>
     planCues(expand(w), w.cues, offsetMs: offsetMs);
 
 void main() {
+  group('tones', () {
+    /// Two short rounds, so a whole script fits in a test: 30 seconds of work
+    /// and 10 of rest, twice, with everything switched on.
+    const loud = Workout(
+      id: 'loud',
+      prepareSeconds: 0,
+      rounds: [Round(workSeconds: 30, restSeconds: 10)],
+      repeats: 2,
+      cues: CueSettings(halfway: false, lastRound: false),
+    );
+
+    List<Cue> plan(SoundSettings sounds) =>
+        planCues(expand(loud), loud.cues, sounds: sounds);
+
+    test('the voice is what you get by default, exactly as before', () {
+      // Note there is no rest after the last round and no countdown into the
+      // end: the timeline drops the one and the planner never adds the other.
+      expect(script(plan(const SoundSettings())), [
+        '0 Go, round 1',
+        '27000 three',
+        '28000 two',
+        '29000 one',
+        '30000 Rest',
+        '37000 three',
+        '38000 two',
+        '39000 one',
+        '40000 Go, round 2',
+        '67000 three',
+        '68000 two',
+        '69000 one',
+        '70000 Done',
+      ]);
+    });
+
+    test('tones replace every word, one for one', () {
+      // The same script with nothing said. Note what is gone and what is not:
+      // the round number has vanished, because it was never a cue of its own,
+      // and a rest and the end are still told apart.
+      expect(script(plan(SoundSettings.tones)), [
+        '0 <work>',
+        '27000 <tick>',
+        '28000 <tick>',
+        '29000 <tick>',
+        '30000 <rest>',
+        '37000 <tick>',
+        '38000 <tick>',
+        '39000 <tick>',
+        '40000 <work>',
+        '67000 <tick>',
+        '68000 <tick>',
+        '69000 <tick>',
+        '70000 <done>',
+      ]);
+    });
+
+    test('both puts the tone ahead of the word, and the word on time', () {
+      // The word must not move: it is what the countdown on the screen is
+      // agreeing with. So the tone leads instead, by exactly the gap the
+      // collision rule calls "the same moment", which is the smallest lead
+      // that survives it.
+      final cues = plan(const SoundSettings(phase: SoundMode.both));
+      expect(script(cues).take(3), [
+        // Nothing at -300: there is no room for a lead-in before the session
+        // has started, so the first phase keeps its word and loses its tone.
+        '0 Go, round 1',
+        '27000 three',
+        '28000 two',
+      ]);
+      expect(script(cues).skip(3), [
+        '29000 one',
+        '29700 <rest>',
+        '30000 Rest',
+        '37000 three',
+        '38000 two',
+        '39000 one',
+        '39700 <work>',
+        '40000 Go, round 2',
+        '67000 three',
+        '68000 two',
+        '69000 one',
+        '69700 <done>',
+        '70000 Done',
+      ]);
+    });
+
+    test('each kind of cue is chosen on its own', () {
+      // The point of the feature: the repetitive countdown becomes a tick
+      // while the phase, which is the part worth words, keeps talking.
+      final cues = plan(const SoundSettings(countdown: SoundMode.tone));
+      expect(script(cues), [
+        '0 Go, round 1',
+        '27000 <tick>',
+        '28000 <tick>',
+        '29000 <tick>',
+        '30000 Rest',
+        '37000 <tick>',
+        '38000 <tick>',
+        '39000 <tick>',
+        '40000 Go, round 2',
+        '67000 <tick>',
+        '68000 <tick>',
+        '69000 <tick>',
+        '70000 Done',
+      ]);
+    });
+
+    test('halfway is a tone of its own, in a phase long enough to have one', () {
+      const long = Workout(
+        id: 'long',
+        prepareSeconds: 0,
+        rounds: [Round(workSeconds: 60, restSeconds: 10)],
+        cues: CueSettings(countdown: false, lastRound: false),
+      );
+      expect(
+        script(planCues(expand(long), long.cues, sounds: SoundSettings.tones)),
+        ['0 <work>', '30000 <halfway>', '60000 <done>'],
+      );
+    });
+
+    test('a tone and its word never collide, however they are combined', () {
+      // Every combination of the four settings, on a workout with every kind
+      // of cue in it. Nothing may be dropped by the collision rule and no two
+      // sounds may land closer than it allows — which is the one way this
+      // feature could quietly break the script.
+      const everything = Workout(
+        id: 'everything',
+        prepareSeconds: 10,
+        rounds: [Round(workSeconds: 60, restSeconds: 20)],
+        repeats: 3,
+        breakSeconds: 30,
+        cooldownSeconds: 40,
+      );
+      for (final phase in SoundMode.values) {
+        for (final countdown in SoundMode.values) {
+          for (final halfway in SoundMode.values) {
+            final sounds = SoundSettings(
+              phase: phase,
+              countdown: countdown,
+              halfway: halfway,
+            );
+            final cues = planCues(
+              expand(everything),
+              everything.cues,
+              sounds: sounds,
+            );
+            for (var i = 1; i < cues.length; i++) {
+              expect(
+                cues[i].atMs - cues[i - 1].atMs,
+                greaterThanOrEqualTo(minCueGapMs),
+                reason:
+                    'in $sounds, ${cues[i - 1]} and ${cues[i]} are on top of '
+                    'each other',
+              );
+            }
+          }
+        }
+      }
+    });
+
+    test('a tone cue carries no words and keys to its own file', () {
+      final cues = plan(SoundSettings.tones);
+      for (final cue in cues) {
+        expect(cue.text, isEmpty, reason: 'a tone has nothing to say');
+        expect(cue.key, startsWith('tone-'));
+      }
+      // And the keys are stable, because they name a file in a cache that
+      // outlives the app.
+      expect(cues.first.key, 'tone-work');
+    });
+  });
+
   group('a focus session', () {
     /// The pomodoro, in the shape the model already has: four blocks of 25
     /// with 5 between them, and the long break as the cool down, which is the

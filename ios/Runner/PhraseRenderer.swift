@@ -30,6 +30,30 @@ final class PhraseRenderer {
         directory.appendingPathComponent("\(key).caf")
     }
 
+    /// Where a bundled clip goes. A `.wav`, because that is what it is — the
+    /// synthesiser writes `.caf` and these are not from the synthesiser.
+    func bundledFile(for key: String) -> URL {
+        directory.appendingPathComponent("\(key).wav")
+    }
+
+    /// Puts bundled clips into the cache beside the rendered ones.
+    ///
+    /// After rendering, never before: rendering is what notices the device's
+    /// voice has changed and drops the cache, and a tone written ahead of that
+    /// would be deleted on the way past.
+    ///
+    /// Already-present clips are left alone — a session starts with this call,
+    /// and rewriting six files each time would be work for nothing.
+    func install(_ clips: [String: Data]) {
+        for (key, bytes) in clips {
+            let url = bundledFile(for: key)
+            let size = (try? FileManager.default
+                .attributesOfItem(atPath: url.path))?[.size] as? Int
+            if size == bytes.count { continue }
+            try? bytes.write(to: url, options: .atomic)
+        }
+    }
+
     private func isRendered(_ key: String) -> Bool {
         let path = file(for: key).path
         let size = (try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? Int

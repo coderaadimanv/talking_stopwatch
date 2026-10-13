@@ -1,5 +1,8 @@
 import 'cue.dart';
 import 'phrase.dart';
+import 'plan_cues.dart';
+import 'sound_settings.dart';
+import 'tone.dart';
 
 /// How far ahead the stopwatch arms its announcements.
 ///
@@ -22,6 +25,7 @@ List<Cue> planStopwatchCues({
   required int untilMs,
   int offsetMs = 0,
   Phrases phrases = const Phrases(),
+  SoundMode sound = SoundMode.voice,
 }) {
   if (everySeconds <= 0) return const [];
 
@@ -29,13 +33,27 @@ List<Cue> planStopwatchCues({
   final cues = <Cue>[];
   // Nothing at zero: the user has just pressed the button and knows.
   for (var at = step; at <= untilMs; at += step) {
-    cues.add(
-      Cue(
-        atMs: at,
-        text: phrases.elapsed(at ~/ 1000),
-        priority: CuePriority.phaseWord,
-      ),
-    );
+    // A tone here says a minute has gone by and nothing else, which is a real
+    // mode rather than a degraded one: a stopwatch left running in a pocket
+    // is often only being counted, not read.
+    if (sound.hasTone && !(sound == SoundMode.both && at < toneLeadMs)) {
+      cues.add(
+        Cue(
+          atMs: sound == SoundMode.both ? at - toneLeadMs : at,
+          tone: Tone.tick,
+          priority: CuePriority.phaseWord,
+        ),
+      );
+    }
+    if (sound.hasVoice) {
+      cues.add(
+        Cue(
+          atMs: at,
+          text: phrases.elapsed(at ~/ 1000),
+          priority: CuePriority.phaseWord,
+        ),
+      );
+    }
   }
 
   if (offsetMs == 0) return cues;
