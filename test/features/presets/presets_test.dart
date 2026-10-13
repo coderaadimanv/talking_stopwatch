@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cadent/app/providers.dart';
 import 'package:cadent/core/store/store.dart';
 import 'package:cadent/core/timeline/workout.dart';
+import '../../support/temp.dart';
 
 void main() {
   late Directory dir;
@@ -32,7 +33,7 @@ void main() {
 
   tearDown(() async {
     container.dispose();
-    await dir.delete(recursive: true);
+    await removeTemp(dir);
   });
 
   AppDataController data() => container.read(appDataProvider.notifier);

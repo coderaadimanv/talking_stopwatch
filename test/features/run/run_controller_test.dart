@@ -10,6 +10,7 @@ import 'package:cadent/core/timeline/timeline.dart';
 import 'package:cadent/core/store/store.dart';
 import 'package:cadent/core/timeline/workout.dart';
 import 'package:cadent/features/run/domain/run_controller.dart';
+import '../../support/temp.dart';
 
 void main() {
   late Directory dir;
@@ -65,7 +66,7 @@ void main() {
 
   tearDown(() async {
     container.dispose();
-    await dir.delete(recursive: true);
+    await removeTemp(dir);
   });
 
   RunController controller() => container.read(runProvider.notifier);

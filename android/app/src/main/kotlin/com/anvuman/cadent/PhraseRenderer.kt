@@ -49,7 +49,17 @@ class PhraseRenderer(private val context: Context) {
         const val RENDERING = "gain1"
     }
 
-    fun fileFor(key: String): File = File(dir, "$key.wav")
+    /**
+     * Where a clip lives.
+     *
+     * The one place that decides, which is what makes the user's own sounds
+     * cheap: everything downstream — loading, playing, noticing a clip has
+     * gone — goes through here, so a replaced tone needs no special case
+     * anywhere else. A phrase key is sixteen hex characters and can never be
+     * a tone's name, so the lookup below can only ever answer for a tone.
+     */
+    fun fileFor(key: String): File =
+        OwnSounds.file(context, key) ?: File(dir, "$key.wav")
 
     /**
      * Puts a bundled clip into the cache, so that from here on it is
@@ -70,10 +80,13 @@ class PhraseRenderer(private val context: Context) {
      */
     fun install(clips: Map<String, ByteArray>) {
         for ((key, bytes) in clips) {
-            val file = fileFor(key)
+            // The user's own sound wins. Writing ours over it every session is
+            // exactly the bug this check exists to prevent.
+            if (OwnSounds.file(context, key) != null) continue
+            val file = File(dir, "$key.wav")
             if (file.exists() && file.length() == bytes.size.toLong()) continue
             try {
-                val temp = File(dir, "$key.wav.tmp")
+                val temp = File(dir, "$key.wav.tmp")  // same volume, so rename is atomic
                 temp.writeBytes(bytes)
                 if (!temp.renameTo(file)) temp.delete()
             } catch (_: java.io.IOException) {

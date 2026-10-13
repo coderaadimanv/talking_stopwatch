@@ -8,6 +8,7 @@ import '../../../app/widgets/section.dart';
 import '../../../app/widgets/soft_background.dart';
 import '../../../core/cues/cue.dart';
 import '../../../core/cues/sound_settings.dart';
+import '../../../core/cues/tone.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -148,6 +149,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
               ),
 
+              // Only where tones are actually being used. Offering to replace
+              // a sound nothing is going to play is an invitation to wonder
+              // why nothing happened.
+              if (settings.sounds.usesTones) const _OwnSounds(),
+
               Section(
                 icon: Icons.timer_outlined,
                 title: 'Stopwatch',
@@ -280,6 +286,82 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await player.describe('Cadent', 'Testing the voice');
     await player.warm(const [cue]);
     await player.schedule(const [cue], countUp: true);
+  }
+}
+
+/// Replacing one of the app's tones with a sound off the phone.
+///
+/// Not on every tone: the countdown's tick is ours and stays ours. Three of
+/// them land a second apart, and a notification sound in their place would
+/// still be ringing when the next one is due — the one thing that makes a
+/// timer unreadable by ear. It is a timing mark rather than an event, and
+/// the others are events.
+///
+/// The section is absent, rather than disabled, where picking cannot work at
+/// all: on iOS no app can read or offer the system's sounds, so there is
+/// nothing here to show and a greyed-out row would only promise otherwise.
+class _OwnSounds extends ConsumerWidget {
+  const _OwnSounds();
+
+  /// Each replaceable tone, and what the row is for.
+  /// One word each. A 320dp phone leaves a list row about two hundred logical
+  /// pixels once the trailing control has taken its share, and "Rest and
+  /// breaks" wraps in it — so what the rest tone also covers is said in the
+  /// footnote rather than in the row.
+  static const _rows = [
+    (Tone.work, 'Work'),
+    (Tone.rest, 'Rest'),
+    (Tone.ready, 'Ready'),
+    (Tone.halfway, 'Halfway'),
+    (Tone.done, 'Finished'),
+  ];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final own = ref.watch(ownSoundsProvider).asData?.value;
+    if (own == null) return const SizedBox.shrink();
+
+    final player = ref.read(cuePlayerProvider);
+    Future<void> refreshAfter(Future<void> work) async {
+      await work;
+      ref.invalidate(ownSoundsProvider);
+    }
+
+    return Section(
+      icon: Icons.library_music_outlined,
+      title: 'My sounds',
+      subtitle: own.isEmpty
+          ? 'Use the phone\'s own notification sounds'
+          : '${own.length} replaced',
+      children: [
+        for (final (tone, label) in _rows)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(label),
+            subtitle: Text(own[tone.key] ?? 'Cadent\'s own tone'),
+            onTap: () => refreshAfter(player.pickSound(tone.key)),
+            trailing: own.containsKey(tone.key)
+                ? IconButton(
+                    icon: const Icon(Icons.undo_rounded),
+                    tooltip: 'Put ours back',
+                    onPressed: () =>
+                        refreshAfter(player.clearSound(tone.key)),
+                  )
+                : const Icon(Icons.chevron_right_rounded),
+          ),
+        Padding(
+          padding: const EdgeInsets.only(top: Sizes.gap / 2),
+          child: Text(
+            'Rest covers breaks and the cool down too. The countdown keeps '
+            'its own tick: three of them land a second apart, and a longer '
+            'sound would still be ringing when the next one is due. A sound '
+            'you pick is copied, so it keeps working if you move or delete '
+            'the original, and it is faded out after a second and a half.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+      ],
+    );
   }
 }
 
