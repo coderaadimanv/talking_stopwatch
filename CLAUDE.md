@@ -269,6 +269,38 @@ of about 1.00 and leaves them alone — no special case needed, and worth not
 breaking. A tone needs no speech engine at all, so a phone with no voice can
 still run a session in tone mode.
 
+### Sounds of the user's own
+
+Android only. **No iOS app can read or offer the system's sounds**, so
+`ownSounds` answers null there and the section is simply absent — the same
+three-way answer as `canNotify` and `canSilence`, where null means "never" and
+an empty map means "none yet".
+
+Five of the six tones can be replaced; **the countdown's tick cannot**. Three
+ticks land a second apart, so a notification sound in their place would still
+be ringing when the next one is due. It is a timing mark rather than an event.
+
+Four things that are not obvious and are easy to undo:
+
+- **The sound is copied, not referenced** (`OwnSounds`). The picker hands back
+  a `content://` URI, and the read grant that comes with it is not persisted —
+  holding one is a promise the app cannot keep. The copy also puts the sound on
+  the identical path as every other clip.
+- **The copies live in `filesDir`, not the audio cache.** The cache is wiped
+  when the phone's voice changes and trimmed when it grows; these are the
+  opposite of disposable.
+- **`PhraseRenderer.fileFor` is the one place that decides where a clip
+  lives**, so a replaced tone needs no special case in loading, playing or
+  staleness checks. `install` skips a tone the user has replaced — writing
+  ours over theirs every session is exactly the bug that check prevents.
+- **Picking or clearing calls `CueEngine.forget`.** `SoundPool` holds decoded
+  audio, not a file handle, so replacing the file underneath a loaded clip
+  changes nothing: without this, a newly picked sound would not play until the
+  app was killed. Found on a device, not in a test.
+
+A picked sound is faded out after `OWN_SOUND_MS`, because it can be any length
+and ours are a quarter of a second.
+
 ## Themes
 
 Four palettes — **Rust** (the app's own, and the default), **Slate**, **Moss**

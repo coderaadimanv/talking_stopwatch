@@ -66,6 +66,10 @@ class SoundSettings {
   /// The stopwatch reading the time out.
   final SoundMode elapsed;
 
+  /// Whether anything at all is going to play a tone.
+  bool get usesTones =>
+      phase.hasTone || countdown.hasTone || halfway.hasTone || elapsed.hasTone;
+
   SoundSettings copyWith({
     SoundMode? phase,
     SoundMode? countdown,

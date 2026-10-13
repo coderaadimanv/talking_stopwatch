@@ -88,6 +88,20 @@ class PlatformCuePlayer implements CuePlayer {
       ..addAll(failed?.whereType<String>() ?? const []);
   }
 
+  @override
+  Future<Map<String, String>?> ownSounds() async {
+    final answer = await _invoke<Map<Object?, Object?>>('ownSounds');
+    return answer?.map((k, v) => MapEntry('$k', '$v'));
+  }
+
+  @override
+  Future<String?> pickSound(String toneKey) =>
+      _invoke<String>('pickSound', {'key': toneKey});
+
+  @override
+  Future<void> clearSound(String toneKey) async =>
+      _invoke<Object?>('clearSound', {'key': toneKey});
+
   Future<Uint8List> _bytesOf(Tone tone) async =>
       _tones[tone] ??= (await rootBundle.load(tone.asset)).buffer.asUint8List();
 

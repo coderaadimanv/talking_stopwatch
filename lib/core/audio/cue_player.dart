@@ -102,6 +102,27 @@ abstract class CuePlayer {
   /// else — there is no prompt to show.
   Future<void> openSilenceSettings();
 
+  /// Which tones the user has replaced with a sound of their own, as the
+  /// tone's key to the name of what they chose.
+  ///
+  /// **Null where picking is not possible at all** — iOS, where no app can
+  /// read or offer the system's sounds, and any platform the native half does
+  /// not answer for. The same three-way answer as [canNotify] and
+  /// [canSilence], and for the same reason: an empty map means "none yet" and
+  /// null means "never", and only one of those should put a row on a screen.
+  Future<Map<String, String>?> ownSounds();
+
+  /// Opens the system's sound picker for one tone, and answers what the user
+  /// chose — or null if they backed out, or if there is no picker here.
+  ///
+  /// The sound is copied as it is chosen rather than remembered by reference;
+  /// see the platform half for why that is not an optimisation but the whole
+  /// design.
+  Future<String?> pickSound(String toneKey);
+
+  /// Puts the app's own tone back.
+  Future<void> clearSound(String toneKey);
+
   /// Opens the system screen where the session notification can be switched
   /// back on.
   ///
@@ -150,6 +171,15 @@ class FakeCuePlayer implements CuePlayer {
   bool? silenceAllowed = true;
   final List<bool> silences = [];
   int silenceSettingsOpened = 0;
+
+  /// What [ownSounds] answers. Null is the iOS answer: not a question here.
+  Map<String, String>? own = const {};
+
+  /// What the next [pickSound] comes back with, and every key it was asked
+  /// for.
+  String? picks;
+  final List<String> picked = [];
+  final List<String> cleared = [];
 
   /// The most recent schedule, or null if nothing has been armed.
   List<Cue>? get lastSchedule => schedules.isEmpty ? null : schedules.last;
@@ -215,6 +245,22 @@ class FakeCuePlayer implements CuePlayer {
 
   @override
   Future<void> openSilenceSettings() async => silenceSettingsOpened++;
+
+  @override
+  Future<Map<String, String>?> ownSounds() async => own;
+
+  @override
+  Future<String?> pickSound(String toneKey) async {
+    picked.add(toneKey);
+    if (picks != null) own = {...?own, toneKey: picks!};
+    return picks;
+  }
+
+  @override
+  Future<void> clearSound(String toneKey) async {
+    cleared.add(toneKey);
+    own = {...?own}..remove(toneKey);
+  }
 
   @override
   Stream<void> get stopped => const Stream<void>.empty();

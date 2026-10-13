@@ -9,6 +9,7 @@ import 'package:cadent/core/cues/plan_stopwatch.dart';
 import 'package:cadent/core/store/store.dart';
 import 'package:cadent/core/timeline/workout.dart';
 import 'package:cadent/features/stopwatch/domain/stopwatch_controller.dart';
+import '../../support/temp.dart';
 
 void main() {
   late Directory dir;
@@ -49,7 +50,7 @@ void main() {
 
   tearDown(() async {
     container.dispose();
-    await dir.delete(recursive: true);
+    await removeTemp(dir);
   });
 
   StopwatchController controller() => container.read(stopwatchProvider.notifier);

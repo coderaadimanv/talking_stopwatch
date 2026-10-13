@@ -9,6 +9,7 @@ import 'package:cadent/app/widgets/tick_ring.dart';
 import 'package:cadent/app/providers.dart';
 import 'package:cadent/core/audio/cue_player.dart';
 import 'package:cadent/core/clock/clock.dart';
+import 'package:cadent/core/cues/sound_settings.dart';
 import 'package:cadent/core/store/store.dart';
 import 'package:cadent/core/timeline/workout.dart';
 import 'package:cadent/features/edit/ui/editor_screen.dart';
@@ -19,6 +20,7 @@ import 'package:cadent/features/run/ui/run_screen.dart';
 import 'package:cadent/features/settings/ui/settings_screen.dart';
 import 'package:cadent/features/stopwatch/domain/stopwatch_controller.dart';
 import 'package:cadent/features/stopwatch/ui/stopwatch_screen.dart';
+import '../support/temp.dart';
 
 /// Every screen, on the smallest phone anyone still carries and on a normal
 /// one, checked for the overflow stripes.
@@ -69,7 +71,7 @@ void main() {
 
   tearDown(() async {
     container.dispose();
-    await dir.delete(recursive: true);
+    await removeTemp(dir);
   });
 
   /// 320x640 is a small phone; 360x800 is an ordinary one.
@@ -413,6 +415,60 @@ void main() {
         await tester.drag(find.byType(ListView), const Offset(0, -600));
         await tester.pump();
         expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('picking your own sounds fits, and says what it did', (
+        tester,
+      ) async {
+        useContainer(
+          player: FakeCuePlayer()
+            ..own = const {'tone-work': 'Chime'},
+          settings: const AppSettings(sounds: SoundSettings.tones),
+        );
+        await pumpAt(tester, const SettingsScreen(), size: size);
+        await tester.pump();
+
+        await tester.dragUntilVisible(
+          find.text('My sounds'),
+          find.byType(ListView),
+          const Offset(0, -200),
+        );
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+
+        // The replaced one says what it was replaced with; the rest say whose
+        // tone they are. A row that said neither would be the bug here.
+        expect(find.text('Chime'), findsOneWidget);
+        expect(find.text("Cadent's own tone"), findsNWidgets(4));
+        expectSingleLine(tester, 'Halfway');
+      });
+
+      testWidgets('nothing offers to replace a sound where it cannot', (
+        tester,
+      ) async {
+        // iOS: no app can read or offer the system's sounds, so there is no
+        // section at all. Null is not empty.
+        useContainer(
+          player: FakeCuePlayer()..own = null,
+          settings: const AppSettings(sounds: SoundSettings.tones),
+        );
+        await pumpAt(tester, const SettingsScreen(), size: size);
+        await tester.pump();
+
+        expect(find.text('My sounds'), findsNothing);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('nothing offers to replace a tone nothing will play', (
+        tester,
+      ) async {
+        // Every cue is spoken, so no tone is ever reached. Offering to change
+        // one is an invitation to wonder why nothing happened.
+        useContainer(player: FakeCuePlayer());
+        await pumpAt(tester, const SettingsScreen(), size: size);
+        await tester.pump();
+
+        expect(find.text('My sounds'), findsNothing);
       });
 
       testWidgets('settings fit with both notices up', (tester) async {

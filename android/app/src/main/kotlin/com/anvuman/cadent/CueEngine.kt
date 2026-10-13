@@ -43,6 +43,23 @@ object CueEngine {
     /** Let the last cue finish speaking before the notification disappears. */
     private const val TAIL_MS = 2500L
 
+    /**
+     * How long one of the user's own sounds is allowed to play.
+     *
+     * Ours are a quarter of a second by design. A notification sound the user
+     * picked can be any length at all, and one still ringing when the next cue
+     * lands is how a timer stops being readable by ear. Our own tones are
+     * never capped — they are already short, and there is no reason to put a
+     * fade on something that has already finished.
+     */
+    private const val OWN_SOUND_MS = 1500L
+
+    /** Taken off the end of that, so a cut-off sound does not click. */
+    private const val OWN_FADE_MS = 250L
+
+    /** Steps in the fade. Five is inaudibly smooth and costs five messages. */
+    private const val FADE_STEPS = 5
+
     private lateinit var appContext: Context
     private var renderer: PhraseRenderer? = null
 
@@ -52,6 +69,9 @@ object CueEngine {
 
     private var pool: SoundPool? = null
     private val soundIds = mutableMapOf<String, Int>()
+
+    /** Clips that are the user's own, and so have to be kept short. */
+    private val capped = mutableSetOf<String>()
     private val loadPending = mutableSetOf<Int>()
     private var onLoaded: (() -> Unit)? = null
 
@@ -73,6 +93,20 @@ object CueEngine {
 
     private var endsAt = 0L
     private var countingUp = false
+
+    /**
+     * Drops a clip from memory so the next session loads it afresh.
+     *
+     * Needed because [SoundPool] holds decoded audio, not a file handle: once
+     * a tone has been loaded, replacing the file underneath it changes
+     * nothing at all. Without this, picking your own sound would keep playing
+     * ours until the app was killed — which is both wrong and the kind of
+     * wrong that looks like the feature not working.
+     */
+    fun forget(key: String) {
+        soundIds.remove(key)?.let { pool?.unload(it) }
+        capped.remove(key)
+    }
 
     /** Told to Dart as cues play, and when the notification is used. */
     var onFired: ((String) -> Unit)? = null
@@ -128,6 +162,8 @@ object CueEngine {
             // phone's voice has changed and drops the whole cache, and a tone
             // written ahead of that would be deleted on the way past.
             renderer.install(tones)
+            capped.clear()
+            capped.addAll(OwnSounds.names(appContext).keys)
             load((phrases.keys - failedKeys.toSet()) + tones.keys) {
                 callback(failedKeys)
             }
@@ -249,8 +285,30 @@ object CueEngine {
 
     private fun fire(key: String) {
         val id = soundIds[key]
-        if (id != null) pool?.play(id, 1f, 1f, 1, 0, 1f)
+        if (id != null) {
+            val stream = pool?.play(id, 1f, 1f, 1, 0, 1f) ?: 0
+            if (stream != 0 && key in capped) fadeOut(stream)
+        }
         main.post { onFired?.invoke(key) }
+    }
+
+    /**
+     * Brings one of the user's own sounds down and stops it.
+     *
+     * On the cue thread, so a busy main thread cannot stretch a fade — the
+     * same reason the cues themselves are posted there.
+     */
+    private fun fadeOut(stream: Int) {
+        val handler = ensureHandler()
+        val from = OWN_SOUND_MS - OWN_FADE_MS
+        for (step in 1..FADE_STEPS) {
+            val at = from + OWN_FADE_MS * step / FADE_STEPS
+            val volume = 1f - step.toFloat() / FADE_STEPS
+            handler.postDelayed({
+                if (volume <= 0f) pool?.stop(stream)
+                else pool?.setVolume(stream, volume, volume)
+            }, at)
+        }
     }
 
     // --- audio focus -------------------------------------------------------

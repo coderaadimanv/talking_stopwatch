@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioManager
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -24,6 +25,11 @@ import io.flutter.plugin.common.MethodChannel
  */
 class MainActivity : FlutterActivity() {
     private var channel: MethodChannel? = null
+
+    /// The tone being replaced and the call waiting on it, while the system's
+    /// picker is in front. Null at every other moment.
+    private var picking: String? = null
+    private var pickResult: MethodChannel.Result? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -151,6 +157,37 @@ class MainActivity : FlutterActivity() {
                 result.success(null)
             }
 
+            // The user's own sounds. Android only — see `pickSound` on the
+            // Dart side for why iOS answers nothing at all.
+            "ownSounds" -> result.success(OwnSounds.names(applicationContext))
+
+            "pickSound" -> {
+                val key = call.argument<String>("key")
+                if (key == null) {
+                    result.error("bad_args", "pickSound needs a key", null)
+                } else if (picking != null) {
+                    // A second picker while the first is up would leave one of
+                    // the two calls waiting for a result that never comes.
+                    result.success(null)
+                } else {
+                    picking = key
+                    pickResult = result
+                    if (!openPicker()) {
+                        picking = null
+                        pickResult = null
+                        result.success(null)
+                    }
+                }
+            }
+
+            "clearSound" -> {
+                call.argument<String>("key")?.let {
+                    OwnSounds.clear(applicationContext, it)
+                    CueEngine.forget(it)
+                }
+                result.success(null)
+            }
+
             "canSilence" -> result.success(TimerService.canSilence(this))
 
             "silence" -> {
@@ -169,6 +206,67 @@ class MainActivity : FlutterActivity() {
 
             else -> result.notImplemented()
         }
+    }
+
+    /**
+     * The system's picker, showing the phone's notification sounds.
+     *
+     * A system screen, not a list of our own: it needs no permission, it
+     * already knows every sound the phone has, and it is the one the user
+     * recognises. Answers whether it opened at all — a device can be without
+     * it, and a promise of a picker that never appears is worse than no
+     * picker.
+     */
+    private fun openPicker(): Boolean = try {
+        startActivityForResult(
+            Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
+                .putExtra(
+                    RingtoneManager.EXTRA_RINGTONE_TYPE,
+                    RingtoneManager.TYPE_NOTIFICATION,
+                )
+                .putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Pick a sound")
+                // Nothing is not a choice here: a tone that plays nothing is
+                // what turning the cue off is for, one screen up.
+                .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, false),
+            PICK_SOUND,
+        )
+        true
+    } catch (_: ActivityNotFoundException) {
+        false
+    }
+
+    /**
+     * What the picker chose, copied before the grant that came with it
+     * expires. Everything about why that copy happens is in [OwnSounds].
+     */
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != PICK_SOUND) return
+
+        val key = picking
+        val result = pickResult
+        picking = null
+        pickResult = null
+        if (key == null || result == null) return
+
+        val extra = RingtoneManager.EXTRA_RINGTONE_PICKED_URI
+        val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            data?.getParcelableExtra(extra, Uri::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            data?.getParcelableExtra<Uri>(extra)
+        }
+        if (resultCode != RESULT_OK || uri == null) {
+            // Backed out, or picked silence. Nothing changes.
+            result.success(null)
+            return
+        }
+        val title = OwnSounds.save(applicationContext, key, uri)
+        // The clip is already decoded in memory from an earlier session, and
+        // replacing the file underneath it would change nothing.
+        if (title != null) CueEngine.forget(key)
+        result.success(title)
     }
 
     /**
@@ -215,5 +313,6 @@ class MainActivity : FlutterActivity() {
 
     private companion object {
         const val CHANNEL = "com.anvuman.cadent/cues"
+        const val PICK_SOUND = 2
     }
 }

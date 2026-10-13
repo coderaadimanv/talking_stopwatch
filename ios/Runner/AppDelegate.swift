@@ -113,6 +113,12 @@ import UIKit
     case "canSilence", "silence", "openSilenceSettings":
       result(nil)
 
+    // No iOS app can read or offer the system's sounds, so this answers
+    // nothing rather than nothing-yet — which is what keeps the row off the
+    // screen here instead of showing one that could never work.
+    case "ownSounds", "pickSound", "clearSound":
+      result(nil)
+
     default:
       result(FlutterMethodNotImplemented)
     }

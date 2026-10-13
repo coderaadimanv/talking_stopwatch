@@ -62,6 +62,20 @@ final canSilenceProvider = FutureProvider.autoDispose<bool?>(
   (ref) => ref.watch(cuePlayerProvider).canSilence(),
 );
 
+/// The tones the user has replaced with a sound of their own, or null where
+/// picking is not possible at all (see [CuePlayer.ownSounds]).
+///
+/// Held by the platform rather than in the app's own settings, which is
+/// deliberate: the audio lives there, so the list of what has been replaced
+/// should come from the same place. A setting that said "custom" while the
+/// file behind it had gone would be a lie that nothing could correct.
+///
+/// `autoDispose`, like the two above, because the answer changes on a screen
+/// that is not ours.
+final ownSoundsProvider = FutureProvider.autoDispose<Map<String, String>?>(
+  (ref) => ref.watch(cuePlayerProvider).ownSounds(),
+);
+
 /// Everything saved, held in memory and written back on every change.
 class AppDataController extends Notifier<AppData> {
   @override
