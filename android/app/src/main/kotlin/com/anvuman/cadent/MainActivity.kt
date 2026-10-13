@@ -4,8 +4,10 @@ import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.provider.Settings
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
@@ -22,6 +24,20 @@ import io.flutter.plugin.common.MethodChannel
  */
 class MainActivity : FlutterActivity() {
     private var channel: MethodChannel? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Point the volume keys at the voice.
+        //
+        // By default they move whichever stream is making a noise, and the
+        // ringer when nothing is. Cues are a word every few minutes, so for
+        // almost the whole session nothing is — which means someone standing
+        // over a phone in a stand, pressing volume up because the countdown
+        // is too quiet, is turning up their ringtone and hearing no
+        // difference. One line, and the keys mean what the user thinks they
+        // mean for as long as this screen is open.
+        volumeControlStream = AudioManager.STREAM_MUSIC
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

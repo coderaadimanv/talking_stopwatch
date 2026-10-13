@@ -305,7 +305,7 @@ final class CuePlayer {
             pcmFormat: source, frameCapacity: AVAudioFrameCount(file.length)
         ), (try? file.read(into: input)) != nil else { return nil }
 
-        if source == format { return input }
+        if source == format { return lift(input) }
 
         guard let converter = AVAudioConverter(from: source, to: format) else {
             return nil
@@ -327,6 +327,89 @@ final class CuePlayer {
             status.pointee = .haveData
             return input
         }
-        return error == nil ? output : nil
+        return error == nil ? lift(output) : nil
+    }
+
+    // MARK: - Loudness
+
+    /// Where a clip's speech should sit, as RMS below full scale (-11 dBFS).
+    private static let targetRMS: Float = 0.282
+
+    /// However quiet the clip, never more gain than this.
+    private static let maxGain: Float = 4
+
+    /// Where the limiter's curve starts bending, and where it flattens out.
+    private static let knee: Float = 0.70
+    private static let ceiling: Float = 0.99
+
+    /// Quieter than this share of the peak is the pause, not the word.
+    private static let silence: Float = 1 / 32
+
+    /// Lifts a clip to a loudness you can hear across a gym.
+    ///
+    /// The same arithmetic as Android's `Loudness`, for the same reason and
+    /// with the same numbers: the system voice renders at about -6 dBFS peak
+    /// and -17 dBFS across the speech, which is a sensible level for a file
+    /// and the wrong one for a word that has to carry out of a phone speaker
+    /// over music. There is no gain left anywhere else — a player node's
+    /// volume stops at 1.0 — so it is made here, on the way in.
+    ///
+    /// Each clip gets the gain that brings its speech to ``targetRMS``, and
+    /// the few samples that would then pass ``knee`` are bent smoothly into
+    /// the ceiling rather than clipped flat against it. On real cues that is
+    /// about +6 dB with roughly one sample in a hundred touched.
+    ///
+    /// The silence is left out of the measurement: a clip is mostly the pause
+    /// around the word, and averaging that in would ask for a gain the word
+    /// does not need. Anything it cannot read, it hands back untouched.
+    private func lift(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
+        guard let channels = buffer.floatChannelData else { return buffer }
+        let frames = Int(buffer.frameLength)
+        let count = Int(buffer.format.channelCount)
+        guard frames > 0, count > 0 else { return buffer }
+
+        var peak: Float = 0
+        for channel in 0..<count {
+            for frame in 0..<frames {
+                peak = max(peak, abs(channels[channel][frame]))
+            }
+        }
+        guard peak > 0 else { return buffer }
+
+        let floor = peak * Self.silence
+        var sum: Double = 0
+        var spoken = 0
+        for channel in 0..<count {
+            for frame in 0..<frames {
+                let value = channels[channel][frame]
+                guard abs(value) > floor else { continue }
+                sum += Double(value) * Double(value)
+                spoken += 1
+            }
+        }
+        guard spoken > 0 else { return buffer }
+
+        let rms = Float(sqrt(sum / Double(spoken)))
+        let gain = min(Self.targetRMS / rms, Self.maxGain)
+        // Under a fifth of a decibel. Not worth walking the samples for.
+        guard gain > 1.02 else { return buffer }
+
+        for channel in 0..<count {
+            for frame in 0..<frames {
+                channels[channel][frame] = Self.shape(channels[channel][frame] * gain)
+            }
+        }
+        return buffer
+    }
+
+    /// The limiter: linear up to the knee, then a curve that flattens into the
+    /// ceiling and never reaches it. `tanh` because it is smooth where it
+    /// meets the straight part, and a corner in a waveform is a click.
+    private static func shape(_ value: Float) -> Float {
+        let size = abs(value)
+        guard size > knee else { return value }
+        let over = (size - knee) / (1 - knee)
+        let shaped = min(knee + (1 - knee) * tanh(over), ceiling)
+        return value < 0 ? -shaped : shaped
     }
 }
