@@ -64,7 +64,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
     final session = ref.watch(runProvider).session;
 
     return Scaffold(
-      backgroundColor: Brand.ink,
+      backgroundColor: context.colors.ground,
       appBar: session.isActive
           ? null
           : AppBar(
@@ -74,13 +74,13 @@ class _FocusScreenState extends ConsumerState<FocusScreen> {
                 padding: const EdgeInsets.only(left: Sizes.gap),
                 child: IconButton(
                   onPressed: () => context.go('/'),
-                  style: chipIconButton(),
+                  style: chipIconButton(context.colors),
                   icon: const Icon(Icons.arrow_back),
                 ),
               ),
             ),
       body: SoftBackground(
-        color: Brand.ink,
+        color: context.colors.ground,
         glow: context.colors.focus,
         child: SafeArea(
           child: Padding(
@@ -196,7 +196,7 @@ class _Silence extends ConsumerWidget {
         Sizes.gap / 2,
       ),
       decoration: BoxDecoration(
-        border: Border.all(color: Brand.cardLine, width: Sizes.hairline),
+        border: Border.all(color: context.colors.cardLine, width: Sizes.hairline),
         borderRadius: BorderRadius.circular(Sizes.radius),
       ),
       child: Column(
@@ -300,7 +300,7 @@ class _Running extends ConsumerWidget {
               progress: through,
               // A dark face, not a pale one: a bright disc is the last thing
               // a screen meant to be ignored should have on it.
-              face: Brand.surface,
+              face: context.colors.surface,
               arc: accent,
               child: _Face(
                 session: session,
@@ -319,7 +319,7 @@ class _Running extends ConsumerWidget {
                 icon: Icons.stop_rounded,
                 label: 'Stop',
                 onPressed: controller.stop,
-                background: Brand.surface,
+                background: context.colors.surface,
                 foreground: accent,
                 labelColor: colors.muted,
               ),
@@ -340,7 +340,7 @@ class _Running extends ConsumerWidget {
                 icon: Icons.skip_next_rounded,
                 label: 'Skip',
                 onPressed: controller.skip,
-                background: Brand.surface,
+                background: context.colors.surface,
                 foreground: accent,
                 labelColor: colors.muted,
               ),
@@ -382,7 +382,7 @@ class _Face extends StatelessWidget {
             countdown(session.segmentRemainingMs),
             // Smaller than the run screen's, and ivory rather than ink: this
             // one is read at a desk, by someone who is not out of breath.
-            style: text.displayMedium?.copyWith(color: Brand.ivory),
+            style: text.displayMedium?.copyWith(color: context.colors.onGround),
           ),
         ),
         if (segment != null && segment!.kind == SegmentKind.work)

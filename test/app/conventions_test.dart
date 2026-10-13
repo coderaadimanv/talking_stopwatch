@@ -7,6 +7,10 @@ import 'package:flutter_test/flutter_test.dart';
 /// fails the build. Both are the kind of thing that makes an app look
 /// assembled rather than designed, and both are easy to do by accident and
 /// hard to spot in review.
+///
+/// Since the app gained themes the colour half of this rule carries real
+/// weight: a hard-coded colour is no longer merely off-brand, it is a screen
+/// that quietly ignores the theme the user chose.
 void main() {
   final sources = Directory('lib')
       .listSync(recursive: true)
@@ -28,6 +32,17 @@ void main() {
         if (line.trimLeft().startsWith('//')) continue;
         if (RegExp(r'\bColors\.|\bColor\(0x').hasMatch(line)) {
           offenders.add('${file.path}:${i + 1}  ${line.trim()}');
+        }
+        // `Brand` is one theme's raw values. A screen that reads it directly
+        // looks right in rust and wrong in the other three, silently — which
+        // is exactly the bug this rule exists to make impossible. The one
+        // exception is `transparent`, which is the absence of a colour and
+        // the same in every theme.
+        if (RegExp(r'\bBrand\.(?!transparent\b)').hasMatch(line)) {
+          offenders.add(
+            '${file.path}:${i + 1}  ${line.trim()}   '
+            '(use context.colors, which follows the theme)',
+          );
         }
       }
     }

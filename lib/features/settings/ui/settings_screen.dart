@@ -52,21 +52,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      backgroundColor: Brand.ink,
+      backgroundColor: context.colors.ground,
       appBar: AppBar(
         leadingWidth: Sizes.bigControl,
         leading: Padding(
           padding: const EdgeInsets.only(left: Sizes.gap),
           child: IconButton(
             onPressed: () => context.go('/'),
-            style: chipIconButton(),
+            style: chipIconButton(context.colors),
             icon: const Icon(Icons.arrow_back),
           ),
         ),
         title: const Text('Settings'),
       ),
       body: SoftBackground(
-        color: Brand.ink,
+        color: context.colors.ground,
         glow: colors.work,
         child: SafeArea(
           child: ListView(
@@ -205,6 +205,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ],
               ),
+
+              Section(
+                icon: Icons.palette_outlined,
+                title: 'Theme',
+                subtitle: colors.name,
+                children: [
+                  for (final theme in AppColors.themes)
+                    _ThemeRow(
+                      theme: theme,
+                      chosen: theme.id == colors.id,
+                      onTap: () => data.editSettings(
+                        (s) => s.copyWith(themeId: theme.id),
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
         ),
@@ -221,6 +237,65 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await player.warm(const [cue]);
     await player.schedule(const [cue], countUp: true);
   }
+}
+
+/// One theme to choose, shown as the thing it actually changes.
+///
+/// Three dots rather than a swatch: a theme is a *set* of colours that have to
+/// stay tellable apart, so the row shows the three you will spend the session
+/// looking at — work, rest and the long break — instead of one accent that
+/// says nothing about whether the run screen will be readable.
+class _ThemeRow extends StatelessWidget {
+  const _ThemeRow({
+    required this.theme,
+    required this.chosen,
+    required this.onTap,
+  });
+
+  final AppColors theme;
+  final bool chosen;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      onTap: onTap,
+      leading: SizedBox(
+        width: Sizes.badgeTiny,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final colour in [theme.work, theme.rest, theme.breakBetween])
+              Padding(
+                padding: const EdgeInsets.only(right: Sizes.gap / 4),
+                child: _Swatch(colour: colour),
+              ),
+          ],
+        ),
+      ),
+      title: Text(theme.name),
+      // The tick wears the theme's own accent, not the one in use, so the
+      // row shows what it would look like rather than what is on now.
+      trailing: chosen
+          ? Icon(Icons.check_rounded, color: theme.work)
+          : Icon(Icons.circle_outlined, color: colors.line),
+    );
+  }
+}
+
+class _Swatch extends StatelessWidget {
+  const _Swatch({required this.colour});
+
+  final Color colour;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: Sizes.dot,
+    height: Sizes.dot,
+    decoration: BoxDecoration(color: colour, shape: BoxShape.circle),
+  );
 }
 
 /// Something wrong with the phone rather than something to choose.
@@ -321,7 +396,7 @@ class _ActionRow extends StatelessWidget {
         height: Sizes.control,
         padding: const EdgeInsets.symmetric(horizontal: Sizes.gutter),
         decoration: BoxDecoration(
-          border: Border.all(color: Brand.cardLine, width: Sizes.hairline),
+          border: Border.all(color: context.colors.cardLine, width: Sizes.hairline),
           borderRadius: BorderRadius.circular(Sizes.radius),
         ),
         child: Row(

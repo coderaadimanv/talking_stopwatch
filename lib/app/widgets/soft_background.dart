@@ -35,7 +35,7 @@ class SoftBackground extends StatelessWidget {
   Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(color: color),
     child: CustomPaint(
-      painter: _Blobs(glow: glow),
+      painter: _Blobs(glow: glow, colors: context.colors),
       // The painter has no size of its own; it fills whatever the child needs.
       child: SizedBox.expand(child: child),
     ),
@@ -43,9 +43,13 @@ class SoftBackground extends StatelessWidget {
 }
 
 class _Blobs extends CustomPainter {
-  const _Blobs({this.glow});
+  const _Blobs({this.glow, required this.colors});
 
   final Color? glow;
+
+  /// Only for the two veils. The painter is outside the widget tree, so the
+  /// theme has to be handed to it rather than looked up.
+  final AppColors colors;
 
   /// Where each shape sits and how big it is, as fractions of the screen, so
   /// the arrangement is the same on every phone. `strength` is how much of it
@@ -63,7 +67,7 @@ class _Blobs extends CustomPainter {
       final centre = Offset(size.width * shape.x, size.height * shape.y);
       final radius = size.width * shape.r;
       final colour = glow == null
-          ? (shape.light ? Brand.veilLight : Brand.veilDark)
+          ? (shape.light ? colors.veilLight : colors.veilDark)
           : glow!.withValues(alpha: shape.strength);
       canvas.drawCircle(
         centre,
@@ -79,5 +83,5 @@ class _Blobs extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_Blobs old) => old.glow != glow;
+  bool shouldRepaint(_Blobs old) => old.glow != glow || old.colors != colors;
 }

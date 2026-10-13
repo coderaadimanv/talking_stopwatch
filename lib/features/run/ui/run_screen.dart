@@ -78,7 +78,7 @@ class _RunScreenState extends ConsumerState<RunScreen> {
                 padding: const EdgeInsets.only(left: Sizes.gap),
                 child: IconButton(
                   onPressed: () => context.go('/'),
-                  style: chipIconButton(),
+                  style: chipIconButton(context.colors),
                   icon: const Icon(Icons.arrow_back),
                 ),
               ),
@@ -112,7 +112,7 @@ class _Ground extends StatelessWidget {
   Widget build(BuildContext context) => color == null
       // Nothing running: the app's own dark ground, lit by the accent.
       ? SoftBackground(
-          color: Brand.ink,
+          color: context.colors.ground,
           glow: context.colors.work,
           child: child,
         )
@@ -141,7 +141,7 @@ class _Ready extends ConsumerWidget {
     return Column(
       children: [
         CircleBadge.icon(
-          background: Brand.accentWash,
+          background: context.colors.accentWash,
           ring: accent,
           icon: Icons.directions_run_rounded,
           color: accent,
@@ -522,7 +522,7 @@ class _Finished extends ConsumerWidget {
       children: [
         const Spacer(),
         CircleBadge.icon(
-          background: Brand.accentWash,
+          background: context.colors.accentWash,
           ring: accent,
           icon: Icons.check_rounded,
           color: accent,

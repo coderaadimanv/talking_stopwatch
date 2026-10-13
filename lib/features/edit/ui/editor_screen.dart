@@ -40,14 +40,14 @@ class EditorScreen extends ConsumerWidget {
     void edit(Workout Function(Workout) change) => data.editWorkout(id, change);
 
     return Scaffold(
-      backgroundColor: Brand.ink,
+      backgroundColor: context.colors.ground,
       appBar: AppBar(
         leadingWidth: Sizes.bigControl,
         leading: Padding(
           padding: const EdgeInsets.only(left: Sizes.gap),
           child: IconButton(
             onPressed: () => context.go('/'),
-            style: chipIconButton(),
+            style: chipIconButton(context.colors),
             icon: const Icon(Icons.arrow_back),
           ),
         ),
@@ -71,7 +71,7 @@ class EditorScreen extends ConsumerWidget {
         ],
       ),
       body: SoftBackground(
-        color: Brand.ink,
+        color: context.colors.ground,
         glow: accent,
         child: SafeArea(
           child: ListView(
@@ -355,7 +355,7 @@ class _RoundCard extends StatelessWidget {
             children: [
               CircleBadge(
                 size: Sizes.badgeTiny,
-                background: Brand.accentWash,
+                background: context.colors.accentWash,
                 child: Text(
                   '${index + 1}',
                   style: Theme.of(context).textTheme.titleMedium
