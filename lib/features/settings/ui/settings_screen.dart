@@ -6,6 +6,7 @@ import '../../../app/providers.dart';
 import '../../../app/style.dart';
 import '../../../app/widgets/section.dart';
 import '../../../app/widgets/soft_background.dart';
+import '../../../core/audio/cue_player.dart';
 import '../../../core/cues/cue.dart';
 import '../../../core/cues/sound_settings.dart';
 import '../../../core/cues/tone.dart';
@@ -280,13 +281,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   /// Says one word down the real path — rendered, cached and scheduled — so
   /// what you hear is what a cue will sound like, delay and all.
-  Future<void> _testVoice() async {
-    const cue = Cue(atMs: 0, text: 'Go', priority: CuePriority.phaseWord);
-    final player = ref.read(cuePlayerProvider);
-    await player.describe('Cadent', 'Testing the voice');
-    await player.warm(const [cue]);
-    await player.schedule(const [cue], countUp: true);
-  }
+  Future<void> _testVoice() =>
+      playOnce(ref.read(cuePlayerProvider), const Cue(
+        atMs: 0,
+        text: 'Go',
+        priority: CuePriority.phaseWord,
+      ), 'Testing the voice');
+}
+
+/// Plays one cue now, down the real path, and then lets go.
+///
+/// Scheduling is how this app makes any sound at all, so a preview goes the
+/// same way: rendered or installed, loaded, armed and fired. What you hear is
+/// exactly what a session will play, the calibration delay and the user's own
+/// sound included.
+///
+/// The cancel at the end is not tidiness. A schedule that counts up has no end
+/// to stop itself at — that is what a stopwatch needs — so without this the
+/// service and its notification stay up after a one-shot preview, which is
+/// what the voice test has been doing. The wait is longer than any clip,
+/// including one of the user's own at its cap.
+Future<void> playOnce(CuePlayer player, Cue cue, String saying) async {
+  await player.describe('Cadent', saying);
+  await player.warm([cue]);
+  await player.schedule([cue], countUp: true);
+  await Future<void>.delayed(const Duration(seconds: 3));
+  await player.cancel();
 }
 
 /// Replacing one of the app's tones with a sound off the phone.
@@ -335,19 +355,17 @@ class _OwnSounds extends ConsumerWidget {
           : '${own.length} replaced',
       children: [
         for (final (tone, label) in _rows)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(label),
-            subtitle: Text(own[tone.key] ?? 'Cadent\'s own tone'),
-            onTap: () => refreshAfter(player.pickSound(tone.key)),
-            trailing: own.containsKey(tone.key)
-                ? IconButton(
-                    icon: const Icon(Icons.undo_rounded),
-                    tooltip: 'Put ours back',
-                    onPressed: () =>
-                        refreshAfter(player.clearSound(tone.key)),
-                  )
-                : const Icon(Icons.chevron_right_rounded),
+          _SoundChoice(
+            label: label,
+            sound: own[tone.key] ?? 'Cadent\'s own tone',
+            replaced: own.containsKey(tone.key),
+            onPlay: () => playOnce(
+              player,
+              Cue(atMs: 0, tone: tone, priority: CuePriority.phaseWord),
+              'Playing $label',
+            ),
+            onChange: () => refreshAfter(player.pickSound(tone.key)),
+            onReset: () => refreshAfter(player.clearSound(tone.key)),
           ),
         Padding(
           padding: const EdgeInsets.only(top: Sizes.gap / 2),
@@ -361,6 +379,89 @@ class _OwnSounds extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// One tone: what it is, what it currently plays, and what can be done to it.
+///
+/// Three controls rather than a tappable row, and the middle one is the whole
+/// reason this was rebuilt. The reset used to be a bare undo arrow with a
+/// tooltip, and a tooltip on a phone needs a long press — so in practice there
+/// was no way back from a sound you had picked. A control nobody can find is
+/// not a control.
+///
+/// Play is first because you cannot judge a sound you have not heard, and that
+/// applies to ours as much as to theirs.
+class _SoundChoice extends StatelessWidget {
+  const _SoundChoice({
+    required this.label,
+    required this.sound,
+    required this.replaced,
+    required this.onPlay,
+    required this.onChange,
+    required this.onReset,
+  });
+
+  final String label;
+  final String sound;
+  final bool replaced;
+  final VoidCallback onPlay;
+  final VoidCallback onChange;
+  final VoidCallback onReset;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Sizes.gap),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(label, style: text.titleMedium),
+              const SizedBox(width: Sizes.gap),
+              // What it plays now, given the room the name leaves it.
+              Expanded(
+                child: Text(
+                  sound,
+                  textAlign: TextAlign.end,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodySmall,
+                ),
+              ),
+            ],
+          ),
+          // The two labels are Expanded, not merely shrink-to-fit: ActionLabel
+          // scales a label down only when something has bounded its width, and
+          // a Row gives its children all the room they ask for. Unbounded, the
+          // pair overflowed a 320dp phone by fifty pixels.
+          Row(
+            children: [
+              IconButton(
+                onPressed: onPlay,
+                tooltip: 'Play it',
+                icon: const Icon(Icons.play_arrow_rounded),
+              ),
+              Expanded(
+                child: TextButton(
+                  onPressed: onChange,
+                  child: const ActionLabel('Change'),
+                ),
+              ),
+              if (replaced)
+                Expanded(
+                  child: TextButton(
+                    onPressed: onReset,
+                    child: const ActionLabel('Use ours'),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

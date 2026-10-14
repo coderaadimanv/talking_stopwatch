@@ -269,6 +269,22 @@ of about 1.00 and leaves them alone — no special case needed, and worth not
 breaking. A tone needs no speech engine at all, so a phone with no voice can
 still run a session in tone mode.
 
+**The clips are struck bars — marimba, near enough.** The partials sit at
+1 : 3.9 : 9.2 rather than at 2x and 3x, and the upper ones die away much
+faster than the fundamental; those two facts are the whole difference between
+wood and a beeper, which is what the first version of these was and what it
+sounded like. There is a mallet transient too — a few milliseconds of filtered
+noise — and without it even correct partials sound synthesised.
+
+**Pitch is chosen by measurement, not by ear, and the window is narrow.** Below
+about 500 Hz a phone speaker throws most of a bar away; at F4 it loses
+essentially all of it, so a warm-sounding low note is a silent one. Above E5
+the 3.9 partial climbs past 2.6 kHz into the band the ear finds most
+aggressive — the first retune, pitched an octave up, measured *harsher* than
+the beeps it replaced. **C5 to G5 is what is left.** Before changing a pitch,
+measure the spectrum rather than trusting the description; the right answer
+here was the opposite of the obvious one twice running.
+
 ### Sounds of the user's own
 
 Android only. **No iOS app can read or offer the system's sounds**, so
@@ -299,7 +315,17 @@ Four things that are not obvious and are easy to undo:
   app was killed. Found on a device, not in a test.
 
 A picked sound is faded out after `OWN_SOUND_MS`, because it can be any length
-and ours are a quarter of a second.
+and ours are a third of a second.
+
+**Every sound has a play button, and the reset is a word.** Both came from the
+same report. The reset used to be a bare undo arrow with a tooltip, and a
+tooltip on a phone needs a long press — so in practice there was no way back
+from a sound you had picked. A control nobody can find is not a control. And
+you cannot judge a sound you have not heard, which applies to ours as much as
+to theirs, so `playOnce` previews any of them down the real path. It cancels
+afterwards: a schedule that counts up has no end to stop itself at, so without
+that a one-shot preview leaves the service and its notification up — which is
+what "Test the voice" had been doing.
 
 ## Themes
 
