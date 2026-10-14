@@ -441,6 +441,36 @@ void main() {
         expect(find.text('Chime'), findsOneWidget);
         expect(find.text("Cadent's own tone"), findsNWidgets(4));
         expectSingleLine(tester, 'Halfway');
+
+        // The way back is a label, not a bare icon with a tooltip. It was an
+        // undo arrow, and a tooltip on a phone needs a long press — so in
+        // practice there was no way back at all from a sound you had picked.
+        // Exactly one, on the row that has something to undo.
+        expect(find.text('Use ours'), findsOneWidget);
+        expect(find.text('Change'), findsNWidgets(5));
+
+        // And every sound can be heard before it is chosen, ours included.
+        expect(find.byIcon(Icons.play_arrow_rounded), findsNWidgets(5));
+      });
+
+      testWidgets('there is nothing to undo until something is replaced', (
+        tester,
+      ) async {
+        useContainer(
+          player: FakeCuePlayer(),
+          settings: const AppSettings(sounds: SoundSettings.tones),
+        );
+        await pumpAt(tester, const SettingsScreen(), size: size);
+        await tester.pump();
+        await tester.dragUntilVisible(
+          find.text('My sounds'),
+          find.byType(ListView),
+          const Offset(0, -200),
+        );
+        await tester.pump();
+
+        expect(find.text('Use ours'), findsNothing);
+        expect(find.text("Cadent's own tone"), findsNWidgets(5));
       });
 
       testWidgets('nothing offers to replace a sound where it cannot', (
