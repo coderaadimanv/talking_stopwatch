@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cadent/app/style.dart';
 import 'package:cadent/core/cues/sound_settings.dart';
+import 'package:cadent/core/cues/tone.dart';
 import 'package:cadent/core/store/store.dart';
 import 'package:cadent/core/timeline/workout.dart';
 
@@ -174,6 +175,23 @@ void main() {
     expect(sounds.phase, SoundMode.both);
     expect(sounds.countdown, SoundMode.tone);
     expect(sounds.halfway, SoundMode.voice);
+  });
+
+  test('the chosen tone set survives a round trip, and defaults to wood', () async {
+    expect((await store.load()).settings.sounds.pack, TonePack.wood);
+
+    await store.save(
+      const AppData(
+        settings: AppSettings(sounds: SoundSettings(pack: TonePack.tabla)),
+      ),
+    );
+    expect((await store.load()).settings.sounds.pack, TonePack.tabla);
+  });
+
+  test('a tone set this build has never heard of reads as wood', () {
+    // A phone that has been on a later build with more sets than this one.
+    expect(TonePack.byName('gamelan'), TonePack.wood);
+    expect(TonePack.byName(null), TonePack.wood);
   });
 
   test('a sound mode this build has never heard of reads as the voice', () {

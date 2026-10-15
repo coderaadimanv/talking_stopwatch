@@ -262,8 +262,33 @@ Four rules worth keeping:
   tone written ahead of that is deleted on the way past. Both halves go in one
   `warm` call so only the platform has to keep that order.
 
-`tool/tones.py` makes the six clips in `assets/sounds/` and is committed so a
-tone can be retuned by changing a number. They are rendered **at the loudness
+### The three sets
+
+**Wood** (marimba bars, the default), **Tabla** (dayan strokes) and **Drum**
+(rim and block). One set at a time — `SoundSettings.pack` — because within a
+set work and rest are the same figure one way up and the other, and mixing sets
+throws that away. Anyone who wants one particular sound somewhere replaces it
+with their own.
+
+Two naming rules hold this together and both matter:
+
+- **A clip is `tone-<set>-<cue>`.** Without the set in the name, switching from
+  wood to tabla would go on playing whatever was cached under the old one.
+- **A sound of the user's own is `tone-<cue>`, without the set**, because it is
+  theirs whichever set is on. `OwnSounds.idOf` gets from one to the other by
+  taking the last part of the clip name, which is also why `CueEngine.forget`
+  drops *every* set's copy rather than an exact match.
+
+Tabla is the best fit of the three and the reason is acoustic: almost alone
+among drums it has **harmonic** overtones — the loaded black patch tunes the
+membrane onto 1 : 2 : 3 : 4 — so it has a clear pitch and carries out of a
+small speaker. Drum is deliberately the brightest set; its energy above 2.5 kHz
+is far higher than the others', and that number is **not** comparable to a
+beep's, because broadband noise reads as percussive where a narrow harmonic
+stack reads as piercing.
+
+`tool/tones.py` makes all three sets in `assets/sounds/<set>/` and is committed
+so a tone can be retuned by changing a number. They are all rendered **at the loudness
 `Loudness` lifts speech to**, which means the device-side lift measures a gain
 of about 1.00 and leaves them alone — no special case needed, and worth not
 breaking. A tone needs no speech engine at all, so a phone with no voice can

@@ -3,6 +3,7 @@ import 'package:cadent/core/cues/cue.dart';
 import 'package:cadent/core/cues/phrase.dart';
 import 'package:cadent/core/cues/plan_cues.dart';
 import 'package:cadent/core/cues/sound_settings.dart';
+import 'package:cadent/core/cues/tone.dart';
 import 'package:cadent/core/timeline/timeline.dart';
 import 'package:cadent/core/timeline/workout.dart';
 
@@ -182,8 +183,24 @@ void main() {
         expect(cue.key, startsWith('tone-'));
       }
       // And the keys are stable, because they name a file in a cache that
-      // outlives the app.
-      expect(cues.first.key, 'tone-work');
+      // outlives the app — and they carry the set, so switching from wood to
+      // tabla cannot go on playing what was cached under the old name.
+      expect(cues.first.key, 'tone-wood-work');
+      expect(
+        planCues(
+          expand(loud),
+          loud.cues,
+          sounds: const SoundSettings(
+            pack: TonePack.tabla,
+            phase: SoundMode.tone,
+          ),
+        ).first.key,
+        'tone-tabla-work',
+      );
+
+      // A sound of the user's own is filed without the set, because it is
+      // theirs whichever set is on.
+      expect(Tone.work.key, 'tone-work');
     });
   });
 

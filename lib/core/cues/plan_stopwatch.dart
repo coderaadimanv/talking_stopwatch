@@ -26,6 +26,7 @@ List<Cue> planStopwatchCues({
   int offsetMs = 0,
   Phrases phrases = const Phrases(),
   SoundMode sound = SoundMode.voice,
+  TonePack pack = TonePack.wood,
 }) {
   if (everySeconds <= 0) return const [];
 
@@ -41,6 +42,7 @@ List<Cue> planStopwatchCues({
         Cue(
           atMs: sound == SoundMode.both ? at - toneLeadMs : at,
           tone: Tone.tick,
+          pack: pack,
           priority: CuePriority.phaseWord,
         ),
       );

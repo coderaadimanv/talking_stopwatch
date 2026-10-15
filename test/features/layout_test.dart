@@ -10,6 +10,7 @@ import 'package:cadent/app/providers.dart';
 import 'package:cadent/core/audio/cue_player.dart';
 import 'package:cadent/core/clock/clock.dart';
 import 'package:cadent/core/cues/sound_settings.dart';
+import 'package:cadent/core/cues/tone.dart';
 import 'package:cadent/core/store/store.dart';
 import 'package:cadent/core/timeline/workout.dart';
 import 'package:cadent/features/edit/ui/editor_screen.dart';
@@ -429,7 +430,7 @@ void main() {
         await tester.pump();
 
         await tester.dragUntilVisible(
-          find.text('My sounds'),
+          find.text('Tones'),
           find.byType(ListView),
           const Offset(0, -200),
         );
@@ -439,7 +440,7 @@ void main() {
         // The replaced one says what it was replaced with; the rest say whose
         // tone they are. A row that said neither would be the bug here.
         expect(find.text('Chime'), findsOneWidget);
-        expect(find.text("Cadent's own tone"), findsNWidgets(4));
+        expect(find.text('Wood tone'), findsNWidgets(4));
         expectSingleLine(tester, 'Halfway');
 
         // The way back is a label, not a bare icon with a tooltip. It was an
@@ -451,6 +452,38 @@ void main() {
 
         // And every sound can be heard before it is chosen, ours included.
         expect(find.byIcon(Icons.play_arrow_rounded), findsNWidgets(5));
+
+        // Every set is offered, and exactly one is on.
+        for (final pack in TonePack.values) {
+          expect(find.text(pack.label), findsOneWidget);
+        }
+        expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+      });
+
+      testWidgets('the rows follow whichever set is on', (tester) async {
+        useContainer(
+          player: FakeCuePlayer(),
+          settings: const AppSettings(
+            sounds: SoundSettings(
+              pack: TonePack.tabla,
+              phase: SoundMode.tone,
+            ),
+          ),
+        );
+        await pumpAt(tester, const SettingsScreen(), size: size);
+        await tester.pump();
+        await tester.dragUntilVisible(
+          find.text('Tones'),
+          find.byType(ListView),
+          const Offset(0, -200),
+        );
+        await tester.pump();
+
+        // Five rows saying whose tone they play, and it is the chosen set's —
+        // not the default's, and not a label frozen at build time.
+        expect(find.text('Tabla tone'), findsNWidgets(5));
+        expect(find.text('Wood tone'), findsNothing);
+        expect(tester.takeException(), isNull);
       });
 
       testWidgets('there is nothing to undo until something is replaced', (
@@ -463,14 +496,14 @@ void main() {
         await pumpAt(tester, const SettingsScreen(), size: size);
         await tester.pump();
         await tester.dragUntilVisible(
-          find.text('My sounds'),
+          find.text('Tones'),
           find.byType(ListView),
           const Offset(0, -200),
         );
         await tester.pump();
 
         expect(find.text('Use ours'), findsNothing);
-        expect(find.text("Cadent's own tone"), findsNWidgets(5));
+        expect(find.text('Wood tone'), findsNWidgets(5));
       });
 
       testWidgets('nothing offers to replace a sound where it cannot', (
@@ -485,7 +518,7 @@ void main() {
         await pumpAt(tester, const SettingsScreen(), size: size);
         await tester.pump();
 
-        expect(find.text('My sounds'), findsNothing);
+        expect(find.text('Tones'), findsNothing);
         expect(tester.takeException(), isNull);
       });
 
@@ -498,7 +531,7 @@ void main() {
         await pumpAt(tester, const SettingsScreen(), size: size);
         await tester.pump();
 
-        expect(find.text('My sounds'), findsNothing);
+        expect(find.text('Tones'), findsNothing);
       });
 
       testWidgets('settings fit with both notices up', (tester) async {
