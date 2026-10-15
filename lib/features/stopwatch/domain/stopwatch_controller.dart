@@ -153,6 +153,7 @@ class StopwatchController extends Notifier<StopwatchState> {
       untilMs: _armedUntil,
       offsetMs: settings.offsetMs,
       sound: settings.sounds.elapsed,
+      pack: settings.sounds.pack,
     );
   }
 

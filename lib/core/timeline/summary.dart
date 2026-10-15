@@ -46,6 +46,63 @@ extension WorkoutSummary on Workout {
 
   /// How long the whole thing takes, ready to show.
   String get totalLabel => countdown(expand(this).totalMs);
+
+  /// How much of the session is actually work, from 0 to 1.
+  ///
+  /// What the ring on a card draws. A ring at some fraction because the
+  /// fraction looks good is decoration pretending to be data; this is the one
+  /// number worth knowing before committing to a session that you cannot get
+  /// from its name — a 30/10 and a 30/60 take the same shape in a list and are
+  /// not remotely the same hour.
+  double get workShare {
+    final timeline = expand(this);
+    if (timeline.totalMs <= 0) return 0;
+    final working = timeline.segments
+        .where((s) => s.kind == SegmentKind.work)
+        .fold(0, (sum, s) => sum + s.durationMs);
+    return (working / timeline.totalMs).clamp(0.0, 1.0);
+  }
+
+  /// The two chips on a card: what kind of session this is, and one fact.
+  ///
+  /// **The first is inferred and the second is not**, which is worth knowing
+  /// before trusting either. Nothing in the model records how hard a workout
+  /// is, so the first chip is read off the numbers — and the numbers do say
+  /// it, because what makes a session hard is the ratio of work to rest and
+  /// the length of a block, which are exactly what a preset is made of. It is
+  /// right most of the time and it is still a guess; the second chip is a
+  /// plain count and cannot be wrong.
+  List<(String, bool)> get tags => [
+    (_kindLabel, true),
+    if (kind == TimerKind.focus && cooldownSeconds > 0)
+      ('${cooldownSeconds ~/ 60} min long break', false)
+    else
+      (_plural(workPhases, kind == TimerKind.focus ? 'block' : 'round'), false),
+  ];
+
+  /// The inferred one.
+  ///
+  /// The thresholds, and why they sit where they do: half a minute of work
+  /// with less rest than work is interval training and nothing else; a minute
+  /// or more with as much rest again is strength work, taken steadily. For a
+  /// focus session the only question is whether a block is long enough to get
+  /// into something, and twenty-five minutes is the pomodoro for a reason.
+  String get _kindLabel {
+    if (rounds.isEmpty) return 'Empty';
+    final round = rounds.first;
+
+    if (kind == TimerKind.focus) {
+      if (round.workSeconds >= 25 * 60) return 'Deep work';
+      if (round.workSeconds >= 15 * 60) return 'Focused';
+      return 'Short blocks';
+    }
+
+    if (round.workSeconds <= 45 && round.restSeconds < round.workSeconds) {
+      return 'High intensity';
+    }
+    if (round.restSeconds >= round.workSeconds) return 'Steady';
+    return 'Moderate';
+  }
 }
 
 String _plural(int n, String noun) => '$n $noun${n == 1 ? '' : 's'}';

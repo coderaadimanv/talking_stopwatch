@@ -262,8 +262,33 @@ Four rules worth keeping:
   tone written ahead of that is deleted on the way past. Both halves go in one
   `warm` call so only the platform has to keep that order.
 
-`tool/tones.py` makes the six clips in `assets/sounds/` and is committed so a
-tone can be retuned by changing a number. They are rendered **at the loudness
+### The three sets
+
+**Wood** (marimba bars, the default), **Tabla** (dayan strokes) and **Drum**
+(rim and block). One set at a time — `SoundSettings.pack` — because within a
+set work and rest are the same figure one way up and the other, and mixing sets
+throws that away. Anyone who wants one particular sound somewhere replaces it
+with their own.
+
+Two naming rules hold this together and both matter:
+
+- **A clip is `tone-<set>-<cue>`.** Without the set in the name, switching from
+  wood to tabla would go on playing whatever was cached under the old one.
+- **A sound of the user's own is `tone-<cue>`, without the set**, because it is
+  theirs whichever set is on. `OwnSounds.idOf` gets from one to the other by
+  taking the last part of the clip name, which is also why `CueEngine.forget`
+  drops *every* set's copy rather than an exact match.
+
+Tabla is the best fit of the three and the reason is acoustic: almost alone
+among drums it has **harmonic** overtones — the loaded black patch tunes the
+membrane onto 1 : 2 : 3 : 4 — so it has a clear pitch and carries out of a
+small speaker. Drum is deliberately the brightest set; its energy above 2.5 kHz
+is far higher than the others', and that number is **not** comparable to a
+beep's, because broadband noise reads as percussive where a narrow harmonic
+stack reads as piercing.
+
+`tool/tones.py` makes all three sets in `assets/sounds/<set>/` and is committed
+so a tone can be retuned by changing a number. They are all rendered **at the loudness
 `Loudness` lifts speech to**, which means the device-side lift measures a gain
 of about 1.00 and leaves them alone — no special case needed, and worth not
 breaking. A tone needs no speech engine at all, so a phone with no voice can
@@ -353,6 +378,41 @@ both problems found in the first three palettes were found by screenshot, not
 by the suite. `deepOf` boosts saturation, which moves a blue much further than
 an orange, so a bright accent can come out as a vivid slab that belongs to no
 palette. Screenshot a new theme on the run screen before believing it.
+
+## Home and the screen before a session
+
+Three things, each with a colour of its own: **workouts wear `work`, focus
+wears `rest`, the stopwatch wears `stopwatch`** — a third accent per theme,
+added for this. They are told apart by colour before any of the words next to
+them are read, so `theme_test` holds the three to the same ΔE and WCAG bars the
+phases get.
+
+A heading's disc and its "new" are **solid**, not washed. That is the one place
+on a dark page where a colour should arrive at full strength.
+
+**Every ring in the app means something.** `RingGauge` on a card and the arc
+around `TickRing` on the ready screen both draw `workShare` — how much of the
+session is actually work. A 30/10 and a 30/60 are identical in a list and are
+not remotely the same hour. A ring drawn at three-quarters because
+three-quarters looks good is decoration pretending to be data, which a screen
+made of numbers may not do.
+
+The ready screen's label is **TOTAL**, not the phase. Nothing is running yet,
+and a screen that says WORK before Start has been pressed is wrong in the one
+place this app cannot afford to be.
+
+**The chips are `WorkoutSummary.tags`, and the first one is a guess.** Nothing
+in the model records how hard a session is, so "High intensity" / "Steady" /
+"Deep work" are read off the work-to-rest ratio and the block length. The
+second chip is a plain count and cannot be wrong. `summary_test` pins the
+thresholds at their boundaries, because a guess shown as a fact drifts the
+moment somebody nudges one.
+
+**This screen has about a dozen logical pixels in hand** at 320dp with both
+notices up, and the redraw spent most of them. The ring is what gives way: its
+label and number are inside *one* `FittedBox` so they scale together — around
+the number alone, the label's own height cannot shrink and the column overflows
+by about sixty pixels, which is exactly what happened.
 
 ## The running screens
 

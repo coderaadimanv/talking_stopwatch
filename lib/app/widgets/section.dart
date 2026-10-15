@@ -42,12 +42,18 @@ class SectionHeading extends StatelessWidget {
       ),
       child: Row(
         children: [
+          // Solid, not washed. A heading is the one place on a dark page
+          // where the colour should arrive at full strength: it is what tells
+          // workouts from focus from the stopwatch before any of the words
+          // under it are read.
           CircleBadge(
-            size: Sizes.badgeTiny,
-            // The accent turned right down, not ivory: on a dark screen a
-            // pale disc is a hole punched in the page.
-            background: colors.washOf(badge),
-            child: Icon(icon, color: badge, size: Sizes.iconSmall),
+            size: Sizes.badgeSmall,
+            background: badge,
+            child: Icon(
+              icon,
+              color: colors.readableOn(badge),
+              size: Sizes.icon,
+            ),
           ),
           const SizedBox(width: Sizes.gap),
           Expanded(

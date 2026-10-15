@@ -112,6 +112,9 @@ abstract final class Sizes {
   /// The phase name above the countdown.
   static const phaseText = 32.0;
 
+  /// The app's name on home.
+  static const wordmarkText = 40.0;
+
   static const iconSmall = 20.0;
   static const icon = 24.0;
   static const bigIcon = 32.0;
@@ -143,6 +146,14 @@ abstract final class Sizes {
   /// The round controls at the foot of the running screen.
   static const circleControl = 64.0;
   static const circleControlBig = 88.0;
+
+  /// The ring on a preset card, and the one on the screen before a session
+  /// starts. Thinner than the dial's: it is read at arm's length rather than
+  /// across a room, and the dial's weight at this size is a doughnut.
+  static const ringStroke = 5.0;
+
+  /// The ring on a card, which has to hold a total like "2:10:00".
+  static const ringSmall = 76.0;
 
   /// A dot in the round tracker.
   static const dot = 10.0;
@@ -212,6 +223,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.rest,
     required this.breakBetween,
     required this.cooldown,
+    required this.stopwatch,
     required this.muted,
     required this.line,
     required this.danger,
@@ -234,6 +246,7 @@ class AppColors extends ThemeExtension<AppColors> {
     rest: Color(0xFF6E9A91),
     breakBetween: Brand.rust, // a longer pause than rest, and visibly deeper
     cooldown: Brand.taupe,
+    stopwatch: Color(0xFF6E73B4),
     muted: Brand.taupe,
     line: Brand.line,
     // Not Brand.rust itself: at #A8431E a notice is 2.7:1 on a card, which is
@@ -262,6 +275,7 @@ class AppColors extends ThemeExtension<AppColors> {
     rest: Color(0xFF59B89A),
     breakBetween: Color(0xFFB25E8E),
     cooldown: Color(0xFF7C8699),
+    stopwatch: Color(0xFFD9A14E),
     muted: Color(0xFF8E97A8),
     line: Color(0xFF454E5E),
     danger: Color(0xFFD06072),
@@ -285,6 +299,7 @@ class AppColors extends ThemeExtension<AppColors> {
     rest: Color(0xFFD08A5E),
     breakBetween: Color(0xFF6E86B0),
     cooldown: Color(0xFF8A907A),
+    stopwatch: Color(0xFFA585C4),
     muted: Color(0xFF8F9681),
     line: Color(0xFF4A5240),
     danger: Color(0xFFC75F4B),
@@ -308,6 +323,7 @@ class AppColors extends ThemeExtension<AppColors> {
     rest: Color(0xFF5BE07A),
     breakBetween: Color(0xFF9B8CFF),
     cooldown: Color(0xFFA6A6AE),
+    stopwatch: Color(0xFFEE7FC9),
     muted: Color(0xFFA6A6AE),
     line: Color(0xFF55555E),
     danger: Color(0xFFFF6B6B),
@@ -339,6 +355,12 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color rest;
   final Color breakBetween;
   final Color cooldown;
+
+  /// The stopwatch's own. Not a phase — it is the third thing on home, beside
+  /// the workouts and the focus sessions, and it needs a colour of its own for
+  /// the same reason they do: the three are told apart by colour before they
+  /// are read.
+  final Color stopwatch;
 
   /// Secondary text: readable, but never competing with the number.
   final Color muted;
@@ -396,9 +418,6 @@ class AppColors extends ThemeExtension<AppColors> {
   /// What to draw on top of the deeper cut — the arc, the primary control.
   Color onPhaseDeep(SegmentKind kind) => readableOn(phaseDeep(kind));
 
-  /// The stopwatch has no phase of its own, so it wears the theme's accent.
-  Color get stopwatch => work;
-
   /// The fill behind a badge or a section icon on a dark screen: the colour,
   /// turned right down. [accentWash] is this for the app's own accent; a mode
   /// with a colour of its own needs the same treatment of it.
@@ -453,6 +472,7 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? rest,
     Color? breakBetween,
     Color? cooldown,
+    Color? stopwatch,
     Color? muted,
     Color? line,
     Color? danger,
@@ -468,6 +488,7 @@ class AppColors extends ThemeExtension<AppColors> {
     rest: rest ?? this.rest,
     breakBetween: breakBetween ?? this.breakBetween,
     cooldown: cooldown ?? this.cooldown,
+    stopwatch: stopwatch ?? this.stopwatch,
     muted: muted ?? this.muted,
     line: line ?? this.line,
     danger: danger ?? this.danger,
@@ -490,6 +511,7 @@ class AppColors extends ThemeExtension<AppColors> {
       rest: Color.lerp(rest, other.rest, t)!,
       breakBetween: Color.lerp(breakBetween, other.breakBetween, t)!,
       cooldown: Color.lerp(cooldown, other.cooldown, t)!,
+      stopwatch: Color.lerp(stopwatch, other.stopwatch, t)!,
       muted: Color.lerp(muted, other.muted, t)!,
       line: Color.lerp(line, other.line, t)!,
       danger: Color.lerp(danger, other.danger, t)!,
@@ -531,6 +553,24 @@ double _contrast(Color a, Color b) {
 extension ColorsOf on BuildContext {
   AppColors get colors => Theme.of(this).extension<AppColors>()!;
 }
+
+/// A filled disc of [accent] with an icon on it — the "new" on a heading, and
+/// the settings gear on home.
+///
+/// The counterpart to [chipIconButton]: that one is a quiet dark disc for an
+/// app bar, this one carries a section's colour and is meant to be found.
+ButtonStyle discIconButton(AppColors colors, Color accent) => ButtonStyle(
+  backgroundColor: WidgetStatePropertyAll(accent),
+  foregroundColor: WidgetStatePropertyAll(colors.readableOn(accent)),
+  overlayColor: WidgetStatePropertyAll(
+    colors.readableOn(accent).withValues(alpha: 0.12),
+  ),
+  shape: const WidgetStatePropertyAll(CircleBorder()),
+  minimumSize: const WidgetStatePropertyAll(
+    Size(Sizes.badgeSmall, Sizes.badgeSmall),
+  ),
+  iconSize: const WidgetStatePropertyAll(Sizes.icon),
+);
 
 /// An icon button sitting in its own dark disc, for app bars.
 ///
@@ -577,6 +617,30 @@ class ActionLabel extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // The theme
 // ---------------------------------------------------------------------------
+
+/// Pages cross-fade rather than slide.
+///
+/// The default slides a new page in from the right over about four hundred
+/// milliseconds, and for that moment two screens are on screen side by side.
+/// On most apps nothing comes of it. Here the run and focus screens have no
+/// app bar and paint a colour to all four edges, so mid-slide you get two
+/// full-bleed grounds abutting — which the eye reads as one oversized screen
+/// rather than as two pages, and which was reported as exactly that.
+///
+/// A fade cannot do it: nothing ever moves sideways, so nothing is ever beside
+/// anything.
+class _FadeThrough extends PageTransitionsBuilder {
+  const _FadeThrough();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => FadeTransition(opacity: animation, child: child);
+}
 
 const _shape = RoundedRectangleBorder(
   borderRadius: BorderRadius.all(Radius.circular(Sizes.radius)),
@@ -635,6 +699,13 @@ ThemeData appTheme([AppColors colors = AppColors.rust]) {
 
   return base.copyWith(
     textTheme: _textTheme(base.textTheme, colors),
+
+    // Android only, deliberately. iOS keeps its own transition because the
+    // swipe from the left edge to go back comes with it, and trading a
+    // platform's back gesture for a consistent fade is a bad bargain.
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {TargetPlatform.android: _FadeThrough()},
+    ),
 
     appBarTheme: AppBarTheme(
       backgroundColor: colors.ground,
@@ -874,6 +945,16 @@ TextTheme _textTheme(TextTheme base, AppColors colors) => base.copyWith(
         color: colors.onGround,
       )
       .weight(500),
+  // The wordmark on home. Not the countdown's weight — this is read once, at
+  // arm's length, and at 200 it would look like the number without being one.
+  displaySmall: base.displaySmall
+      ?.copyWith(
+        fontSize: Sizes.wordmarkText,
+        letterSpacing: Tracking.tight,
+        height: 1.1,
+        color: colors.onGround,
+      )
+      .weight(600),
   headlineLarge: base.headlineLarge
       ?.copyWith(
         fontSize: Sizes.phaseText,

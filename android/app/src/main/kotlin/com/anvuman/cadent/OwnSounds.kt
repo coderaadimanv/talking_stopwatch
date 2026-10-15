@@ -36,9 +36,27 @@ object OwnSounds {
     private fun dir(context: Context): File =
         File(context.filesDir, "own-sounds").also { it.mkdirs() }
 
-    /** The audio for [key], or null where the user has not replaced it. */
-    fun file(context: Context, key: String): File? =
-        File(dir(context), key).takeIf { it.isFile && it.length() > 0 }
+    /**
+     * How a sound of the user's own is filed, given the clip it stands in for.
+     *
+     * **Without the set.** A clip is named `tone-<set>-<cue>` so that changing
+     * sets cannot go on playing what was cached under the old name; a sound
+     * the user chose is named `tone-<cue>`, because it is theirs whichever set
+     * is on and losing it because they tried the tabla would be absurd. Taking
+     * the last part of the clip name is all it takes to get from one to the
+     * other, and neither half has to know anything else about the other.
+     *
+     * Null for anything that is not a tone — a rendered phrase is sixteen hex
+     * characters and has no business here.
+     */
+    fun idOf(key: String): String? =
+        if (key.startsWith("tone-")) "tone-" + key.substringAfterLast('-') else null
+
+    /** The audio standing in for [key], or null where it has not been replaced. */
+    fun file(context: Context, key: String): File? {
+        val id = idOf(key) ?: return null
+        return File(dir(context), id).takeIf { it.isFile && it.length() > 0 }
+    }
 
     /** Every tone the user has replaced, and what they chose, for the UI. */
     fun names(context: Context): Map<String, String> {

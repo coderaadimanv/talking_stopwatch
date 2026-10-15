@@ -25,6 +25,7 @@ class Cue {
     required this.priority,
     this.text = '',
     this.tone,
+    this.pack = TonePack.wood,
   });
 
   final int atMs;
@@ -35,10 +36,15 @@ class Cue {
   /// Which sound to play instead of speaking, or null for a spoken cue.
   final Tone? tone;
 
+  /// Which set that sound comes from. Meaningless without [tone], and carried
+  /// on the cue rather than looked up later so that [key] stays something the
+  /// cue can answer on its own.
+  final TonePack pack;
+
   final CuePriority priority;
 
   /// The name of the audio file this cue plays.
-  String get key => tone?.key ?? phraseKey(text);
+  String get key => tone?.keyIn(pack) ?? phraseKey(text);
 
   /// What this cue is, for a log or a test failure.
   String get label => tone == null ? '"$text"' : '<${tone!.name}>';
@@ -49,6 +55,7 @@ class Cue {
       atMs: at < 0 ? 0 : at,
       text: text,
       tone: tone,
+      pack: pack,
       priority: priority,
     );
   }
@@ -65,10 +72,11 @@ class Cue {
       other.atMs == atMs &&
       other.text == text &&
       other.tone == tone &&
+      other.pack == pack &&
       other.priority == priority;
 
   @override
-  int get hashCode => Object.hash(atMs, text, tone, priority);
+  int get hashCode => Object.hash(atMs, text, tone, pack, priority);
 
   @override
   String toString() => 'Cue($atMs, $label)';

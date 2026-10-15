@@ -102,10 +102,21 @@ object CueEngine {
      * nothing at all. Without this, picking your own sound would keep playing
      * ours until the app was killed — which is both wrong and the kind of
      * wrong that looks like the feature not working.
+     *
+     * Takes the name a sound is filed under, not a clip name; see
+     * [OwnSounds.idOf] for why those differ.
      */
-    fun forget(key: String) {
-        soundIds.remove(key)?.let { pool?.unload(it) }
-        capped.remove(key)
+    fun forget(id: String) {
+        // Every clip that sound stands in for, across every set — the pool is
+        // keyed by clip name (`tone-wood-work`) and this is handed the name a
+        // sound is filed under (`tone-work`). Dropping only an exact match
+        // would leave the old clip loaded and playing, which is the whole
+        // thing this exists to prevent.
+        val gone = soundIds.keys.filter { OwnSounds.idOf(it) == id }
+        for (key in gone) {
+            soundIds.remove(key)?.let { pool?.unload(it) }
+            capped.remove(key)
+        }
     }
 
     /** Told to Dart as cues play, and when the notification is used. */
@@ -162,8 +173,13 @@ object CueEngine {
             // phone's voice has changed and drops the whole cache, and a tone
             // written ahead of that would be deleted on the way past.
             renderer.install(tones)
+            // Which clips are the user's own, in clip names rather than in
+            // the names they are filed under — `fire` is handed a clip key.
             capped.clear()
-            capped.addAll(OwnSounds.names(appContext).keys)
+            val own = OwnSounds.names(appContext).keys
+            capped.addAll(
+                (phrases.keys + tones.keys).filter { OwnSounds.idOf(it) in own }
+            )
             load((phrases.keys - failedKeys.toSet()) + tones.keys) {
                 callback(failedKeys)
             }

@@ -1,3 +1,5 @@
+import 'tone.dart';
+
 /// How one kind of cue is sounded.
 enum SoundMode {
   /// The phone's voice, which is what the app has always done.
@@ -30,6 +32,7 @@ enum SoundMode {
 /// answer for anyone who wants it back.
 class SoundSettings {
   const SoundSettings({
+    this.pack = TonePack.wood,
     this.phase = SoundMode.voice,
     this.countdown = SoundMode.voice,
     this.halfway = SoundMode.voice,
@@ -48,11 +51,15 @@ class SoundSettings {
   );
 
   factory SoundSettings.fromJson(Map<String, Object?> json) => SoundSettings(
+    pack: TonePack.byName(json['pack'] as String?),
     phase: SoundMode.byName(json['phase'] as String?),
     countdown: SoundMode.byName(json['countdown'] as String?),
     halfway: SoundMode.byName(json['halfway'] as String?),
     elapsed: SoundMode.byName(json['elapsed'] as String?),
   );
+
+  /// Which set the tones come from. The whole set at once; see [TonePack].
+  final TonePack pack;
 
   /// "Go, round 3", "Rest", "Break" — and "Done" at the end.
   final SoundMode phase;
@@ -71,11 +78,13 @@ class SoundSettings {
       phase.hasTone || countdown.hasTone || halfway.hasTone || elapsed.hasTone;
 
   SoundSettings copyWith({
+    TonePack? pack,
     SoundMode? phase,
     SoundMode? countdown,
     SoundMode? halfway,
     SoundMode? elapsed,
   }) => SoundSettings(
+    pack: pack ?? this.pack,
     phase: phase ?? this.phase,
     countdown: countdown ?? this.countdown,
     halfway: halfway ?? this.halfway,
@@ -83,6 +92,7 @@ class SoundSettings {
   );
 
   Map<String, Object?> toJson() => {
+    'pack': pack.name,
     'phase': phase.name,
     'countdown': countdown.name,
     'halfway': halfway.name,
@@ -92,11 +102,12 @@ class SoundSettings {
   @override
   bool operator ==(Object other) =>
       other is SoundSettings &&
+      other.pack == pack &&
       other.phase == phase &&
       other.countdown == countdown &&
       other.halfway == halfway &&
       other.elapsed == elapsed;
 
   @override
-  int get hashCode => Object.hash(phase, countdown, halfway, elapsed);
+  int get hashCode => Object.hash(pack, phase, countdown, halfway, elapsed);
 }

@@ -347,21 +347,58 @@ class _OwnSounds extends ConsumerWidget {
       ref.invalidate(ownSoundsProvider);
     }
 
+    final pack = ref.watch(
+      appDataProvider.select((data) => data.settings.sounds.pack),
+    );
+    final data = ref.read(appDataProvider.notifier);
+
     return Section(
       icon: Icons.library_music_outlined,
-      title: 'My sounds',
+      title: 'Tones',
       subtitle: own.isEmpty
-          ? 'Use the phone\'s own notification sounds'
-          : '${own.length} replaced',
+          ? pack.detail
+          : '${pack.label} · ${own.length} replaced',
       children: [
+        // The same shape as the theme picker: a tick on the one that is on,
+        // an empty ring on the rest.
+        for (final choice in TonePack.values)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(choice.label),
+            subtitle: Text(choice.detail),
+            onTap: () => data.editSettings(
+              (s) => s.copyWith(sounds: s.sounds.copyWith(pack: choice)),
+            ),
+            trailing: Icon(
+              choice == pack
+                  ? Icons.check_rounded
+                  : Icons.circle_outlined,
+              color: choice == pack
+                  ? context.colors.work
+                  : context.colors.line,
+            ),
+          ),
+        const Divider(),
+        Padding(
+          padding: const EdgeInsets.only(bottom: Sizes.gap),
+          child: Text(
+            'Any one of them can be a sound off your phone instead.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
         for (final (tone, label) in _rows)
           _SoundChoice(
             label: label,
-            sound: own[tone.key] ?? 'Cadent\'s own tone',
+            sound: own[tone.key] ?? '${pack.label} tone',
             replaced: own.containsKey(tone.key),
             onPlay: () => playOnce(
               player,
-              Cue(atMs: 0, tone: tone, priority: CuePriority.phaseWord),
+              Cue(
+                atMs: 0,
+                tone: tone,
+                pack: pack,
+                priority: CuePriority.phaseWord,
+              ),
               'Playing $label',
             ),
             onChange: () => refreshAfter(player.pickSound(tone.key)),

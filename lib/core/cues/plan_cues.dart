@@ -55,6 +55,7 @@ List<Cue> planCues(
           tone: Tone.forPhase(segment.kind),
           priority: CuePriority.phaseWord,
           mode: sounds.phase,
+          pack: sounds.pack,
         ),
       );
     }
@@ -69,6 +70,7 @@ List<Cue> planCues(
           tone: Tone.halfway,
           priority: CuePriority.halfway,
           mode: sounds.halfway,
+          pack: sounds.pack,
         ),
       );
     }
@@ -86,6 +88,7 @@ List<Cue> planCues(
             tone: Tone.tick,
             priority: CuePriority.countdown,
             mode: sounds.countdown,
+            pack: sounds.pack,
           ),
         );
       }
@@ -99,6 +102,7 @@ List<Cue> planCues(
       tone: Tone.done,
       priority: CuePriority.phaseWord,
       mode: sounds.phase,
+      pack: sounds.pack,
     ),
   );
 
@@ -128,6 +132,7 @@ Iterable<Cue> _sounded({
   required Tone tone,
   required CuePriority priority,
   required SoundMode mode,
+  required TonePack pack,
 }) sync* {
   // The tone leads, so it is emitted first — but only where there is room for
   // it. Before the session has started there is none, and a tone clamped to
@@ -137,6 +142,7 @@ Iterable<Cue> _sounded({
     yield Cue(
       atMs: mode == SoundMode.both ? atMs - toneLeadMs : atMs,
       tone: tone,
+      pack: pack,
       priority: priority,
     );
   }

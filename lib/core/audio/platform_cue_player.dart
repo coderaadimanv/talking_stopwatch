@@ -56,19 +56,20 @@ class PlatformCuePlayer implements CuePlayer {
   @override
   Future<bool> available() async => await _invoke<bool>('available') ?? false;
 
-  /// The bundled tones, read once and kept. Six small files; re-reading them
-  /// at the start of every session would be work for nothing.
-  final Map<Tone, Uint8List> _tones = {};
+  /// The bundled tones, read once and kept, keyed by the clip they are for.
+  /// Six small files per set; re-reading them at the start of every session
+  /// would be work for nothing.
+  final Map<String, Uint8List> _tones = {};
 
   @override
   Future<void> warm(List<Cue> cues) async {
     // One entry per distinct phrase: a 30/10 x 8 workout has 73 cues but only
     // about 20 different things to say.
     final phrases = <String, String>{};
-    final tones = <Tone>{};
+    final tones = <String, (Tone, TonePack)>{};
     for (final cue in cues) {
       if (cue.tone case final tone?) {
-        tones.add(tone);
+        tones[cue.key] = (tone, cue.pack);
       } else {
         phrases[cue.key] = cue.text;
       }
@@ -81,7 +82,10 @@ class PlatformCuePlayer implements CuePlayer {
     // written after that and before anything is loaded for playing.
     final failed = await _invoke<List<Object?>>('warm', {
       'phrases': phrases,
-      'tones': {for (final tone in tones) tone.key: await _bytesOf(tone)},
+      'tones': {
+        for (final entry in tones.entries)
+          entry.key: await _bytesOf(entry.key, entry.value.$1, entry.value.$2),
+      },
     });
     unrenderable
       ..clear()
@@ -102,8 +106,9 @@ class PlatformCuePlayer implements CuePlayer {
   Future<void> clearSound(String toneKey) async =>
       _invoke<Object?>('clearSound', {'key': toneKey});
 
-  Future<Uint8List> _bytesOf(Tone tone) async =>
-      _tones[tone] ??= (await rootBundle.load(tone.asset)).buffer.asUint8List();
+  Future<Uint8List> _bytesOf(String key, Tone tone, TonePack pack) async =>
+      _tones[key] ??=
+          (await rootBundle.load(tone.assetIn(pack))).buffer.asUint8List();
 
   @override
   Future<void> schedule(
