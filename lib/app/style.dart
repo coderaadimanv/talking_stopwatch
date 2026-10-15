@@ -618,6 +618,30 @@ class ActionLabel extends StatelessWidget {
 // The theme
 // ---------------------------------------------------------------------------
 
+/// Pages cross-fade rather than slide.
+///
+/// The default slides a new page in from the right over about four hundred
+/// milliseconds, and for that moment two screens are on screen side by side.
+/// On most apps nothing comes of it. Here the run and focus screens have no
+/// app bar and paint a colour to all four edges, so mid-slide you get two
+/// full-bleed grounds abutting — which the eye reads as one oversized screen
+/// rather than as two pages, and which was reported as exactly that.
+///
+/// A fade cannot do it: nothing ever moves sideways, so nothing is ever beside
+/// anything.
+class _FadeThrough extends PageTransitionsBuilder {
+  const _FadeThrough();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => FadeTransition(opacity: animation, child: child);
+}
+
 const _shape = RoundedRectangleBorder(
   borderRadius: BorderRadius.all(Radius.circular(Sizes.radius)),
 );
@@ -675,6 +699,13 @@ ThemeData appTheme([AppColors colors = AppColors.rust]) {
 
   return base.copyWith(
     textTheme: _textTheme(base.textTheme, colors),
+
+    // Android only, deliberately. iOS keeps its own transition because the
+    // swipe from the left edge to go back comes with it, and trading a
+    // platform's back gesture for a consistent fade is a bad bargain.
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {TargetPlatform.android: _FadeThrough()},
+    ),
 
     appBarTheme: AppBarTheme(
       backgroundColor: colors.ground,
