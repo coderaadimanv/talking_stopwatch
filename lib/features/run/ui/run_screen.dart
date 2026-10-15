@@ -140,18 +140,20 @@ class _Ready extends ConsumerWidget {
 
     return Column(
       children: [
+        // Solid, like the headings on home: this is the one thing on the
+        // screen that says which mode you are in before anything is read.
         CircleBadge.icon(
-          background: context.colors.accentWash,
-          ring: accent,
+          background: accent,
           icon: Icons.directions_run_rounded,
-          color: accent,
+          color: colors.readableOn(accent),
         ),
         const SizedBox(height: Sizes.gap),
         Text('Workout', style: text.headlineLarge),
         Text('GET READY', style: text.labelLarge),
-        const SizedBox(height: Sizes.bigGap),
+        const SizedBox(height: Sizes.gap),
 
-        // Which workout, under what you are about to do.
+        // Which workout, in the same shape home gives it, so the card you
+        // tapped is recognisably the card you landed on.
         Card(
           child: Padding(
             padding: const EdgeInsets.all(Sizes.gap),
@@ -187,20 +189,28 @@ class _Ready extends ConsumerWidget {
           child: Center(
             child: TickRing(
               color: accent,
+              // The arc over the marks is the share of the session that is
+              // work — the same meaning it has on the card this screen was
+              // opened from, and the reason it is drawn at all rather than at
+              // whatever fraction looks best.
+              progress: workout.workShare,
+              // One FittedBox around the label *and* the number, not around
+              // the number alone. The label has a height of its own that
+              // cannot shrink, and on a 320dp phone with both notices up this
+              // screen has about a dozen pixels in hand — so the whole block
+              // scales together and the ring goes on being the thing that
+              // gives way.
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                child: Text(
-                  workout.totalLabel,
-                  style: text.displayLarge?.copyWith(
-                    // Lit from within, which is the only thing separating a
-                    // waiting clock from a stopped one.
-                    shadows: [
-                      Shadow(
-                        color: accent.withValues(alpha: 0.55),
-                        blurRadius: 32,
-                      ),
-                    ],
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // TOTAL, not the phase: nothing is running yet, and a
+                    // screen that says WORK before Start has been pressed is
+                    // wrong in the one place this app cannot afford to be.
+                    Text('TOTAL', style: text.labelMedium),
+                    Text(workout.totalLabel, style: text.displayLarge),
+                  ],
                 ),
               ),
             ),

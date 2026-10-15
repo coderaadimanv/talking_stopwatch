@@ -176,12 +176,35 @@ void main() {
         await pumpAt(tester, const PresetsScreen(), size: size);
         expect(tester.takeException(), isNull);
 
-        // Both sections, both "new" buttons and the stopwatch, on the
-        // narrowest screen. Home is the one screen that grew when focus
-        // arrived.
+        // The masthead and both sections without scrolling. Home grew a
+        // wordmark and taller cards in the redraw, so the stopwatch no longer
+        // fits above the fold on a small phone — which is fine, and is why it
+        // is scrolled to rather than simply expected.
+        expect(find.text('Cadent'), findsOneWidget);
         expect(find.text('Workouts'), findsOneWidget);
         expect(find.text('Focus'), findsOneWidget);
+
+        await tester.dragUntilVisible(
+          find.text('Stopwatch'),
+          find.byType(ListView),
+          const Offset(0, -200),
+        );
+        await tester.pump();
         expect(find.text('Stopwatch'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('a preset card says what kind of session it is', (
+        tester,
+      ) async {
+        await pumpAt(tester, const PresetsScreen(), size: size);
+
+        // The derived chips, on the narrowest phone, beside a ring and a
+        // name. Two of them wrap rather than run off the edge.
+        expect(find.text('High intensity'), findsOneWidget);
+        expect(find.text('Deep work'), findsOneWidget);
+        expectSingleLine(tester, 'High intensity');
+        expect(tester.takeException(), isNull);
       });
 
       testWidgets('a focus session waiting to start fits', (tester) async {

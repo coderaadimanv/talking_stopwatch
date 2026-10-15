@@ -379,6 +379,41 @@ by the suite. `deepOf` boosts saturation, which moves a blue much further than
 an orange, so a bright accent can come out as a vivid slab that belongs to no
 palette. Screenshot a new theme on the run screen before believing it.
 
+## Home and the screen before a session
+
+Three things, each with a colour of its own: **workouts wear `work`, focus
+wears `rest`, the stopwatch wears `stopwatch`** — a third accent per theme,
+added for this. They are told apart by colour before any of the words next to
+them are read, so `theme_test` holds the three to the same ΔE and WCAG bars the
+phases get.
+
+A heading's disc and its "new" are **solid**, not washed. That is the one place
+on a dark page where a colour should arrive at full strength.
+
+**Every ring in the app means something.** `RingGauge` on a card and the arc
+around `TickRing` on the ready screen both draw `workShare` — how much of the
+session is actually work. A 30/10 and a 30/60 are identical in a list and are
+not remotely the same hour. A ring drawn at three-quarters because
+three-quarters looks good is decoration pretending to be data, which a screen
+made of numbers may not do.
+
+The ready screen's label is **TOTAL**, not the phase. Nothing is running yet,
+and a screen that says WORK before Start has been pressed is wrong in the one
+place this app cannot afford to be.
+
+**The chips are `WorkoutSummary.tags`, and the first one is a guess.** Nothing
+in the model records how hard a session is, so "High intensity" / "Steady" /
+"Deep work" are read off the work-to-rest ratio and the block length. The
+second chip is a plain count and cannot be wrong. `summary_test` pins the
+thresholds at their boundaries, because a guess shown as a fact drifts the
+moment somebody nudges one.
+
+**This screen has about a dozen logical pixels in hand** at 320dp with both
+notices up, and the redraw spent most of them. The ring is what gives way: its
+label and number are inside *one* `FittedBox` so they scale together — around
+the number alone, the label's own height cannot shrink and the column overflows
+by about sixty pixels, which is exactly what happened.
+
 ## The running screens
 
 The run screen and the stopwatch share one language, and it is worth keeping:

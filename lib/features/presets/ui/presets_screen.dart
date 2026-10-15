@@ -6,7 +6,11 @@ import '../../../app/providers.dart';
 import '../../../app/style.dart';
 import '../../../app/widgets/circle_badge.dart';
 import '../../../app/widgets/section.dart';
+import '../../../app/widgets/pill_button.dart';
+import '../../../app/widgets/tag.dart';
+import '../../../app/widgets/ring_gauge.dart';
 import '../../../app/widgets/soft_background.dart';
+import '../../stopwatch/domain/stopwatch_controller.dart';
 import '../../../core/timeline/summary.dart';
 import '../../../core/timeline/workout.dart';
 
@@ -44,17 +48,6 @@ class PresetsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: context.colors.ground,
-      appBar: AppBar(
-        backgroundColor: Brand.transparent,
-        title: const Text('Cadent'),
-        actions: [
-          IconButton(
-            onPressed: () => context.go('/settings'),
-            icon: const Icon(Icons.settings),
-            tooltip: 'Settings',
-          ),
-        ],
-      ),
       body: SoftBackground(
         color: context.colors.ground,
         glow: colors.work,
@@ -67,6 +60,8 @@ class PresetsScreen extends ConsumerWidget {
               Sizes.bigGap,
             ),
             children: [
+              const _Masthead(),
+
               // Two lists rather than one, and a "new" on each heading rather
               // than a single button floating over the bottom: with two kinds
               // of preset, one New has nothing to say about which kind it
@@ -75,7 +70,9 @@ class PresetsScreen extends ConsumerWidget {
                 icon: Icons.fitness_center_rounded,
                 title: 'Workouts',
                 subtitle: 'Counted out loud',
+                accent: colors.work,
                 trailing: _Add(
+                  accent: colors.work,
                   tooltip: 'New workout',
                   onPressed: () => context.go('/edit/${data.addWorkout().id}'),
                 ),
@@ -95,6 +92,7 @@ class PresetsScreen extends ConsumerWidget {
                 subtitle: 'One word, then quiet',
                 accent: colors.focus,
                 trailing: _Add(
+                  accent: colors.focus,
                   tooltip: 'New focus session',
                   onPressed: () => context.go('/edit/${data.addFocus().id}'),
                 ),
@@ -111,6 +109,13 @@ class PresetsScreen extends ConsumerWidget {
               const SizedBox(height: Sizes.bigGap),
               _StopwatchCard(
                 onTap: () => context.go('/stopwatch'),
+                // Started here, then shown. The other way round — open the
+                // screen, find the button — was two taps and no decision in
+                // between them.
+                onStart: () {
+                  ref.read(stopwatchProvider.notifier).start();
+                  context.go('/stopwatch');
+                },
                 accent: colors.stopwatch,
               ),
             ],
@@ -121,10 +126,53 @@ class PresetsScreen extends ConsumerWidget {
   }
 }
 
-/// The "new" on a section heading.
-class _Add extends StatelessWidget {
-  const _Add({required this.tooltip, required this.onPressed});
+/// The name of the app, and what it is for.
+///
+/// Replaces an app bar, which on this screen was a title in a strip with a
+/// gear at the end of it. There is nothing above home to go back to, so the
+/// strip was spending the best part of the page on saying so.
+class _Masthead extends StatelessWidget {
+  const _Masthead();
 
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: Sizes.gap, bottom: Sizes.gap),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Cadent', style: text.displaySmall),
+                Text('Show up. Focus. Get it done.', style: text.bodyMedium),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => context.go('/settings'),
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            style: chipIconButton(context.colors),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The "new" on a section heading. Wears the section's colour, because at a
+/// glance it is the only thing saying which list it would add to.
+class _Add extends StatelessWidget {
+  const _Add({
+    required this.accent,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final Color accent;
   final String tooltip;
   final VoidCallback onPressed;
 
@@ -132,7 +180,7 @@ class _Add extends StatelessWidget {
   Widget build(BuildContext context) => IconButton(
     onPressed: onPressed,
     tooltip: tooltip,
-    style: chipIconButton(context.colors),
+    style: discIconButton(context.colors, accent),
     icon: const Icon(Icons.add),
   );
 }
@@ -165,48 +213,72 @@ class _WorkoutCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(Sizes.radiusCard),
         child: Padding(
           padding: const EdgeInsets.all(Sizes.gutter),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // The dial, shrunk: how long the whole thing takes, which is
-              // what anyone checks before committing to it.
-              CircleBadge(
-                size: Sizes.badgeSmall,
-                background: colors.washOf(ground),
-                // Scaled rather than sized: a workout's total is "5:20" and a
-                // focus session's is "2:10:00", and both have to sit in the
-                // same disc.
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    workout.totalLabel,
-                    style: text.titleMedium?.copyWith(color: ground),
+              Row(
+                children: [
+                  // The total, in a ring that says how much of it is work.
+                  // A 30/10 and a 30/60 look identical in a list and are not
+                  // remotely the same hour.
+                  RingGauge(
+                    progress: workout.workShare,
+                    color: ground,
+                    size: Sizes.ringSmall,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      // Scaled rather than sized: a workout's total is "5:20"
+                      // and a focus session's is "2:10:00", and both have to
+                      // sit in the same ring.
+                      child: Text(
+                        workout.totalLabel,
+                        style: text.titleMedium?.copyWith(color: ground),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: Sizes.gap),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      workout.name.isEmpty ? 'Untitled' : workout.name,
-                      style: text.titleMedium,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  const SizedBox(width: Sizes.gap),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          workout.name.isEmpty ? 'Untitled' : workout.name,
+                          style: text.titleLarge,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          workout.summary,
+                          style: text.bodyMedium,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                    Text(
-                      workout.summary,
-                      style: text.bodyMedium,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+                  ),
+                  IconButton(
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.tune_rounded),
+                    tooltip: 'Edit',
+                  ),
+                ],
               ),
-              IconButton(
-                onPressed: onEdit,
-                icon: const Icon(Icons.tune_rounded),
-                tooltip: 'Edit',
+              const SizedBox(height: Sizes.gap),
+              // What kind of session it is, and one plain fact. Wrapped, not
+              // scrolled: on a narrow phone a long label takes the second
+              // line rather than disappearing off the edge.
+              Wrap(
+                spacing: Sizes.gap / 2,
+                runSpacing: Sizes.gap / 2,
+                children: [
+                  for (final (label, inferred) in workout.tags)
+                    Tag(
+                      label: label,
+                      accent: ground,
+                      filled: inferred,
+                      icon: inferred ? _kindIcon(workout) : null,
+                    ),
+                ],
               ),
             ],
           ),
@@ -214,16 +286,28 @@ class _WorkoutCard extends ConsumerWidget {
       ),
     );
   }
+
+  /// The icon on the inferred chip. Says the same thing the label does, for
+  /// anyone scanning the list rather than reading it.
+  IconData _kindIcon(Workout workout) => workout.kind == TimerKind.focus
+      ? Icons.bolt_rounded
+      : Icons.local_fire_department_rounded;
 }
 
 class _StopwatchCard extends StatelessWidget {
-  const _StopwatchCard({required this.onTap, required this.accent});
+  const _StopwatchCard({
+    required this.onTap,
+    required this.onStart,
+    required this.accent,
+  });
 
   final VoidCallback onTap;
+  final VoidCallback onStart;
   final Color accent;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final text = Theme.of(context).textTheme;
     return Card(
       child: InkWell(
@@ -231,30 +315,48 @@ class _StopwatchCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(Sizes.radiusCard),
         child: Padding(
           padding: const EdgeInsets.all(Sizes.gutter),
-          child: Row(
+          child: Column(
             children: [
-              CircleBadge.icon(
-                size: Sizes.badgeSmall,
-                background: context.colors.accentWash,
-                icon: Icons.timer_outlined,
-                color: accent,
-              ),
-              const SizedBox(width: Sizes.gap),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Stopwatch', style: text.titleMedium),
-                    Text(
-                      'Counts up and calls out the time',
-                      style: text.bodyMedium,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+              Row(
+                children: [
+                  CircleBadge.icon(
+                    size: Sizes.badgeSmall,
+                    background: accent,
+                    icon: Icons.timer_outlined,
+                    color: colors.readableOn(accent),
+                  ),
+                  const SizedBox(width: Sizes.gap),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Stopwatch', style: text.titleLarge),
+                        Text(
+                          'Counts up and calls out the time',
+                          style: text.bodyMedium,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: colors.muted),
+                ],
               ),
-              Icon(Icons.chevron_right_rounded, color: context.colors.muted),
+              const SizedBox(height: Sizes.gap),
+              // The one session with nothing to choose first, so it is the
+              // one that can be started from here. Opening the screen and
+              // then pressing start was two taps for no decision.
+              //
+              // Outlined rather than filled: the presets above are what this
+              // screen is for, and a solid gradient down here was the
+              // loudest thing on the page by some distance.
+              PillButton.outlined(
+                icon: Icons.play_arrow_rounded,
+                label: 'Start stopwatch',
+                accent: accent,
+                onPressed: onStart,
+              ),
             ],
           ),
         ),

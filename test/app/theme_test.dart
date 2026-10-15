@@ -161,6 +161,44 @@ void main() {
         }
       });
 
+      test('the three things on home can be told apart', () {
+        // Workouts, focus and the stopwatch are picked out by colour before
+        // anybody reads the words next to them, so the three accents have to
+        // be as separable as the phases are.
+        final accents = {
+          'workouts': theme.work,
+          'focus': theme.focus,
+          'stopwatch': theme.stopwatch,
+        };
+        final names = accents.keys.toList();
+        for (var i = 0; i < names.length; i++) {
+          for (var j = i + 1; j < names.length; j++) {
+            expect(
+              _difference(accents[names[i]]!, accents[names[j]]!),
+              greaterThanOrEqualTo(minDifference),
+              reason: '${names[i]} and ${names[j]} look alike on home',
+            );
+          }
+        }
+        // And each has to be readable on the page it sits on, since the name
+        // of a section is drawn in its own colour.
+        for (final entry in accents.entries) {
+          for (final surface in [theme.ground, theme.surface]) {
+            expect(
+              contrastBetween(surface, entry.value),
+              greaterThanOrEqualTo(minReadableLarge),
+              reason: '${entry.key} cannot be read on the page',
+            );
+          }
+          // A filled disc of it carries an icon in the ground colour.
+          expect(
+            contrastBetween(entry.value, theme.readableOn(entry.value)),
+            greaterThanOrEqualTo(minReadableLarge),
+            reason: 'nothing can be drawn on the ${entry.key} disc',
+          );
+        }
+      });
+
       test('a hairline and a wash are still visible on the ground', () {
         // The quietest marks in the app, and the first casualties of a new
         // palette: a border that has become invisible breaks no test that
